@@ -17,6 +17,7 @@ package net.starlark.java.eval;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.lang.ThreadLocal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,6 +46,15 @@ import net.starlark.java.syntax.Location;
  * valuable in tests.)
  */
 public final class StarlarkThread {
+
+  @Nullable private static final ThreadLocal<StarlarkThread> currentThread =
+    new ThreadLocal<StarlarkThread>() {
+      @Override protected StarlarkThread initialValue() { return null; }
+    };
+
+  public static StarlarkThread getCurrentThread() {
+    return currentThread.get();
+  }
 
   /** The mutability of values created by this thread. */
   private final Mutability mutability;
@@ -385,6 +395,8 @@ public final class StarlarkThread {
     this.mutability = mu;
     this.semantics = semantics;
     this.allowRecursion = semantics.getBool(StarlarkSemantics.ALLOW_RECURSION);
+
+    StarlarkThread.currentThread.set(this);
   }
 
   /**

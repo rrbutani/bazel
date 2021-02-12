@@ -27,6 +27,7 @@ import com.google.devtools.build.lib.cmdline.LabelSyntaxException;
 import com.google.devtools.build.lib.cmdline.RepositoryName;
 import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
 import com.google.devtools.build.lib.concurrent.ThreadSafety.ThreadSafe;
+import com.google.devtools.build.lib.packages.BazelModuleContext;
 import com.google.devtools.build.lib.server.FailureDetails.Toolchain.Code;
 import com.google.devtools.build.lib.skyframe.ConfiguredTargetAndData;
 import com.google.devtools.build.lib.skyframe.ToolchainException;
@@ -34,8 +35,10 @@ import com.google.devtools.build.lib.skyframe.UnloadedToolchainContext;
 import com.google.devtools.build.lib.starlarkbuildapi.platform.ToolchainContextApi;
 import javax.annotation.Nullable;
 import net.starlark.java.eval.EvalException;
+import net.starlark.java.eval.Module;
 import net.starlark.java.eval.Printer;
 import net.starlark.java.eval.Starlark;
+import net.starlark.java.eval.StarlarkThread;
 import net.starlark.java.eval.StarlarkSemantics;
 
 /**
@@ -109,6 +112,46 @@ public abstract class ResolvedToolchainContext implements ToolchainContextApi, T
   /** Returns the repository mapping applied by the Starlark 'in' operator to string-form labels. */
   abstract ImmutableMap<RepositoryName, RepositoryName> repoMapping();
 
+  /** Returns the repository mapping from {@link repoMapping} with an extra entry that remaps `@`
+   * ({@link RepositoryName.MAIN}) to the repository of the callee.
+   *
+   *  This is necessary so that string-form labels that begin with `//` are resolved to the repo where
+   *  the `label in ctx.toolchains` expression is and not in `@//`.
+   */
+  private ImmutableMap<RepositoryName, RepositoryName> adjustedRepoMapping() {
+    // As `Label` does, we get the module of the calling function from the call stack and use that
+    // to determine which repo `@` means for this label.
+    //
+    // This particular edge case (string-form labels used with `ctx.toolchains`) is the reason for
+    // the unforunate `getCurrentThread` function on `StarlarkThread`. Because the "current repo"
+    // of the expression involving `ctx.toolchains` is a property that's *not* inherent to the
+    // ToolchainContext, we can't use the workaround that was used to resolve aliases in string-form
+    // labels with toolchain contexts (i.e. finding all the aliases of a toolchain ahead of time —
+    // `requestedToolchainTypeLabels`).
+    //
+    // In order to tell where the expression involving `ctx.toolchains` that we're currently
+    // evaluating is located, we need more information than is available to us. In particular, the
+    // current stack frame or at the very least, the module that the last function call is located in.
+    //
+    // Rather than modify `StarlarkIndexable` and `EvalUtils.binaryOp` to thread this additional
+    // information through and deal with the fallout that would cause, the current solution just goes
+    // and sticks the current `StarlarkThread` in a thread local static variable on the `StarlarkThread`
+    // class. An inelegant hack, no doubt.
+    //
+    // A less egregious (but breaking) change would be to have the key for `ctx.toolchains` required to
+    // be a `Label` instead of a string. This way, the `//` case gets handled by the logic in `Label`
+    // (logic that we're copying here anyways) and we don't have to introduce
+    // `StarlarkThread.getCurrentThread` or make far reaching changes to the codebase. (`Label` manages
+    // to avoid needing to introduce hacks like this because it's fairly special-cased as is.)
+    StarlarkThread thread = StarlarkThread.getCurrentThread();
+    Label module = BazelModuleContext.of(Module.ofInnermostEnclosingStarlarkFunction(thread)).label();
+
+    return new ImmutableMap.Builder()
+        .putAll(repoMapping())
+        .put(RepositoryName.MAIN, module.getRepository())
+        .build();
+  }
+
   /** Returns a description of the target being used, for error messaging. */
   abstract String targetDescription();
 
@@ -175,7 +218,7 @@ public abstract class ResolvedToolchainContext implements ToolchainContextApi, T
 
   @Override
   public ToolchainInfo getIndex(StarlarkSemantics semantics, Object key) throws EvalException {
-    Label toolchainTypeLabel = transformKey(key, repoMapping());
+    Label toolchainTypeLabel = transformKey(key, adjustedRepoMapping());
 
     if (!containsKey(semantics, key)) {
       // TODO(bazel-configurability): The list of available toolchain types is confusing in the
@@ -195,7 +238,7 @@ public abstract class ResolvedToolchainContext implements ToolchainContextApi, T
 
   @Override
   public boolean containsKey(StarlarkSemantics semantics, Object key) throws EvalException {
-    Label toolchainTypeLabel = transformKey(key, repoMapping());
+    Label toolchainTypeLabel = transformKey(key, adjustedRepoMapping());
     return requestedToolchainTypeLabels().containsKey(toolchainTypeLabel);
   }
 

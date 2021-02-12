@@ -997,6 +997,7 @@ java_library(
         "//src/main/java/com/google/devtools/build/lib/analysis/platform:utils",
         "//src/main/java/com/google/devtools/build/lib/cmdline",
         "//src/main/java/com/google/devtools/build/lib/concurrent",
+        "//src/main/java/com/google/devtools/build/lib/packages",
         "//src/main/java/com/google/devtools/build/lib/skyframe:configured_target_and_data",
         "//src/main/java/com/google/devtools/build/lib/skyframe:toolchain_context_key",
         "//src/main/java/com/google/devtools/build/lib/skyframe:toolchain_exception",
