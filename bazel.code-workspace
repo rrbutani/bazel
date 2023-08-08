@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"java.autobuild.enabled": false,
+		"java.import.gradle.enabled": false,
+		"java.import.gradle.wrapper.enabled": false,
+		"java.import.maven.enabled": false,
+		// should be kept in sync with `flake.nix`; TODO: don't hardcode this...
+		"java.jdt.ls.java.home": "/nix/store/7cfs0kpb6lmg14pa49i6fiznscjah1kh-openjdk-19.0.1+10/lib/openjdk",
+		"java.bazel.log.level": "debug",
+	},
+	"extensions": {
+		"recommendations": [
+			"redhat.java",
+			"bazelbuild.vscode-bazel",
+			"sfdc.bazel-vscode-java"
+		]
+	}
+}
