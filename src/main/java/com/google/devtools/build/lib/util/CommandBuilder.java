@@ -47,7 +47,7 @@ import java.util.Map;
  */
 public final class CommandBuilder {
 
-  private static final ImmutableList<String> SHELLS = ImmutableList.of("/bin/sh", "/bin/bash");
+  private static final ImmutableList<String> SHELLS = ImmutableList.of("/bin/sh", "/bin/bash", "/run/current-system/sw/bin/bash");
 
   private static final Splitter ARGV_SPLITTER = Splitter.on(CharMatcher.anyOf(" \t"));
 

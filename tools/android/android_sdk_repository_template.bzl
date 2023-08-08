@@ -239,7 +239,7 @@ def create_android_sdk_rules(
             outs = [tool + "_runner.sh"],
             cmd = "\n".join([
                 "cat > $@ << 'EOF'",
-                "#!/bin/bash",
+                "#!/usr/bin/env bash",
                 "set -eu",
                 # The tools under build-tools/VERSION require the libraries under
                 # build-tools/VERSION/lib, so we can't simply depend on them as a
@@ -281,7 +281,7 @@ def create_android_sdk_rules(
     native.genrule(
         name = "generate_fail_sh",
         outs = ["fail.sh"],
-        cmd = "echo -e '#!/bin/bash\\nexit 1' >> $@; chmod +x $@",
+        cmd = "echo -e '#!/usr/bin/env bash\\nexit 1' >> $@; chmod +x $@",
         executable = 1,
     )
 
@@ -298,7 +298,7 @@ def create_android_sdk_rules(
         outs = ["main_dex_list_creator.sh"],
         cmd = "\n".join([
             "cat > $@ <<'EOF'",
-            "#!/bin/bash",
+            "#!/usr/bin/env bash",
             "",
             "MAIN_DEX_LIST=$$1",
             "STRIPPED_JAR=$$2",

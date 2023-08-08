@@ -107,7 +107,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     LocalExecutionOptions options = cmdEnv.getOptions().getOptions(LocalExecutionOptions.class);
     ImmutableList<String> linuxSandboxArgv =
         LinuxSandboxCommandLineBuilder.commandLineBuilder(
-                linuxSandbox, ImmutableList.of("/bin/true"))
+                linuxSandbox, ImmutableList.of("/run/current-system/sw/bin/true"))
             .setTimeout(options.getLocalSigkillGraceSeconds())
             .build();
     ImmutableMap<String, String> env = ImmutableMap.of();

@@ -166,7 +166,8 @@ public class BazelRuleClassProvider {
     }
   }
 
-  private static final PathFragment FALLBACK_SHELL = PathFragment.create("/bin/bash");
+  private static final PathFragment FALLBACK_SHELL = PathFragment.create("/run/current-system/sw/bin/bash");
+  // private static final PathFragment FALLBACK_SHELL = PathFragment.create("/bin/bash");
 
   public static final ImmutableMap<OS, PathFragment> SHELL_EXECUTABLE =
       ImmutableMap.<OS, PathFragment>builder()

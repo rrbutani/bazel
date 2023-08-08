@@ -425,7 +425,7 @@ def _get_zip_runfiles_path(path, workspace_name, legacy_external_runfiles):
 def _create_executable_zip_file(ctx, *, output, zip_file):
     ctx.actions.run_shell(
         command = "echo '{shebang}' | cat - {zip} > {output}".format(
-            shebang = "#!/usr/bin/env python3",
+            shebang = "#!/usr/bin/env python3", # //
             zip = zip_file.path,
             output = output.path,
         ),

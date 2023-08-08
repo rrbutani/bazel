@@ -45,7 +45,7 @@ public final class PyRuntimeInfo {
   public static final PyRuntimeInfoProvider PROVIDER = new PyRuntimeInfoProvider();
 
   // Only present so PyRuntimeRule can reference it as a default.
-  static final String DEFAULT_STUB_SHEBANG = "#!/usr/bin/env python3";
+  static final String DEFAULT_STUB_SHEBANG = "#!/usr/bin/env python3"; //
 
   // Only present so PyRuntimeRule can reference it as a default.
   // Must call getToolsLabel() when using this.
