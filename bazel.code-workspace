@@ -12,12 +12,40 @@
 		// should be kept in sync with `flake.nix`; TODO: don't hardcode this...
 		"java.jdt.ls.java.home": "/nix/store/7cfs0kpb6lmg14pa49i6fiznscjah1kh-openjdk-19.0.1+10/lib/openjdk",
 		"java.bazel.log.level": "debug",
+
+		// OOMs when loading the bazel targets in `.bazelproject`
+		"java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable",
+
+		// pull up the logs for the bazel java vscode plugin with
+		// `> java: open all log files`
+		//
+		// the plugin will also open a terminal pane where it reports progress
+		// it will get stuck on "synchronizing projects" if there are any
+		// artifacts its expecting that aren't already built... check the logs
+		// to find out what it's upset about (search for "Failed to import
+		// projects")
+		//
+		// have to do `> java: restart language server` to try again; can't seem
+		// to get the bazel sync command to work
+		//
+		// some changes require a full "delete .eclipse, reload vscode window"
+		// to take (seems to get in a bad state sometimes)
+
+		// https://github.com/salesforce/bazel-vscode-java/issues/31
+		//
+		// :-/
+		"java.project.referencedLibraries": [
+			"bazel-bazel/external/**/*.jar",
+			"bazel-bazel/bazel-out/**/third_party/**/*.jar",
+		],
+		"java.compile.nullAnalysis.mode": "automatic"
 	},
 	"extensions": {
 		"recommendations": [
 			"redhat.java",
 			"bazelbuild.vscode-bazel",
-			"sfdc.bazel-vscode-java"
+			"sfdc.bazel-vscode-java",
+			"mkhl.direnv"
 		]
 	}
 }

@@ -32,4 +32,3 @@ user.bazelrc
 /.eclipse/
 /.direnv/
 bzl
-/.bazelproject
