@@ -64,9 +64,36 @@ public class HardlinkedSandboxedSpawn extends AbstractContainerizingSandboxedSpa
     this.sandboxDebug = sandboxDebug;
   }
 
+  // source is an in-sandbox path that's bind-mounted in
+  // target is an absolute path (prefixed with the absolute path of the sandbox
+  // dir) to where the file should land...
+  //
+  // the issue here is that `source` is an in-sandbox path...
+  // `hardLinkRecursive` will try to make hard links or copies _before_ we enter
+  // the sandbox
+  //
+  // for now let's just make a symlink to the in-sandbox path of the file.
+  // we probably want to prefer hardlinks or bindmounts but we cannot do either
+  // of those with the information we have here (we do not know the actual path
+  // of `source` on the host file system... this is not an issue for symlinks
+  // because they are effectively "late bound"; i.e. they can dangle)
+  //
+  // because we do not know the path of `source` we also cannot check and
+  // resolve symlinks! this is unfortunate but it'll have to do for now.
   @Override
   protected void copyFile(Path source, Path target) throws IOException {
-    hardLinkRecursive(source, target);
+    // hardLinkRecursive(source, target);
+
+    // the symlink created will only be valid within the sandbox; it points at
+    // paths that are bind-mounted into the sandbox and *not* present on the
+    // host
+    if (this.sandboxDebug) {
+      logger.atInfo().log(
+        "symlink: sandbox:%s -> %s", source, target.relativeTo(this.sandboxPath));
+    }
+
+    target.createSymbolicLink(source);
+    // target.getFileSystem().createSy
   }
 
   /**
