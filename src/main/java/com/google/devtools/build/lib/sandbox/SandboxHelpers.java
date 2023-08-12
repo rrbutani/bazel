@@ -349,20 +349,23 @@ public final class SandboxHelpers {
     private final Map<VirtualActionInput, byte[]> virtualInputs;
     private final Map<PathFragment, PathFragment> symlinks;
     private final Map<Root, Path> sourceRootBindMounts;
+    private final List<Path> externalSourceArtifactBindMounts;
 
     private static final SandboxInputs EMPTY_INPUTS =
         new SandboxInputs(
-            ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of());
+            ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of(), ImmutableList.of());
 
     public SandboxInputs(
         Map<PathFragment, RootedPath> files,
         Map<VirtualActionInput, byte[]> virtualInputs,
         Map<PathFragment, PathFragment> symlinks,
-        Map<Root, Path> sourceRootBindMounts) {
+        Map<Root, Path> sourceRootBindMounts,
+        List<Path> externalSourceArtifactBindMounts) {
       this.files = files;
       this.virtualInputs = virtualInputs;
       this.symlinks = symlinks;
       this.sourceRootBindMounts = sourceRootBindMounts;
+      this.externalSourceArtifactBindMounts = externalSourceArtifactBindMounts;
     }
 
     public static SandboxInputs getEmptyInputs() {
@@ -379,6 +382,10 @@ public final class SandboxHelpers {
 
     public Map<Root, Path> getSourceRootBindMounts() {
       return sourceRootBindMounts;
+    }
+
+    public List<Path> getExternalSourceArtifactBindMounts() {
+      return externalSourceArtifactBindMounts;
     }
 
     public ImmutableMap<VirtualActionInput, byte[]> getVirtualInputDigests() {
@@ -398,8 +405,10 @@ public final class SandboxHelpers {
       Map<Root, Path> limitedSourceRoots =
           Maps.filterKeys(sourceRootBindMounts, usedRoots::contains);
 
+      // TODO: filter `externalSourceArtifactBindMounts` correctly!
+
       return new SandboxInputs(
-          limitedFiles, ImmutableMap.of(), limitedSymlinks, limitedSourceRoots);
+          limitedFiles, ImmutableMap.of(), limitedSymlinks, limitedSourceRoots, this.externalSourceArtifactBindMounts);
     }
 
     @Override
@@ -449,7 +458,7 @@ public final class SandboxHelpers {
    * @param inputMap the map of action inputs and where they should be visible in the action
    * @param execRootPath the exec root from the point of view of the Bazel server
    * @param withinSandboxExecRootPath the exec root from within the sandbox (different from {@code
-   *     execRootPath} because the sandbox does magic with fiile system namespaces)
+   *     execRootPath} because the sandbox does magic with file system namespaces)
    * @param packageRoots the package path entries during this build
    * @param sandboxSourceRoots the directory where source roots are mapped within the sandbox
    * @throws IOException if processing symlinks fails
@@ -471,6 +480,7 @@ public final class SandboxHelpers {
     Map<PathFragment, PathFragment> inputSymlinks = new TreeMap<>();
     Map<VirtualActionInput, byte[]> virtualInputs = new HashMap<>();
     Map<Root, Root> sourceRootToSandboxSourceRoot = new TreeMap<>();
+    Set<Path> externalSourceArtifactPaths = new HashSet<>();
 
     for (Map.Entry<PathFragment, ActionInput> e : inputMap.entrySet()) {
       if (Thread.interrupted()) {
@@ -516,6 +526,27 @@ public final class SandboxHelpers {
                 RootedPath.toRootedPath(
                     sourceRootToSandboxSourceRoot.get(sourceRoot),
                     inputArtifact.getRootRelativePath());
+
+            if (inputArtifact.getRoot().isExternal()) {
+              // follow symlinks in inputArtifacts that originate from
+              // `new_local_repository`!
+              // todo
+              Path p = inputArtifact.getPath();
+              if (p.isSymbolicLink()) {
+                PathFragment link = p.readSymbolicLink();
+                if (link.isAbsolute()) {
+                  externalSourceArtifactPaths.add(p.getFileSystem().getPath(link));
+                }
+              }
+
+              // if this slow we can:
+              //  - infer the repo
+              //  - once per repo:
+              //    + check if it looks like a `new_local_repository` (i.e. all
+              //      symlinks from a parent dir)
+              //    + if so, add the path of the repo to the list
+            }
+
           } else {
             inputPath = RootedPath.toRootedPath(withinSandboxExecRoot, inputArtifact.getExecPath());
           }
@@ -539,7 +570,7 @@ public final class SandboxHelpers {
     Map<Root, Path> sandboxRootToSourceRoot = new TreeMap<>();
     sourceRootToSandboxSourceRoot.forEach((k, v) -> sandboxRootToSourceRoot.put(v, k.asPath()));
 
-    return new SandboxInputs(inputFiles, virtualInputs, inputSymlinks, sandboxRootToSourceRoot);
+    return new SandboxInputs(inputFiles, virtualInputs, inputSymlinks, sandboxRootToSourceRoot, ImmutableList.copyOf(externalSourceArtifactPaths));
   }
 
   /** The file and directory outputs of a sandboxed spawn. */
