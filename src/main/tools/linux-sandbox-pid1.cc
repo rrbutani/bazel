@@ -401,6 +401,10 @@ static void MakeFilesystemMostlyReadOnly() {
 
     if (!ShouldBeWritable(ent->mnt_dir)) {
       mountFlags |= MS_RDONLY;
+    } else {
+      PRINT_DEBUG(
+        "leaving %s as writable", ent->mnt_dir
+      );
     }
 
     PRINT_DEBUG("remount %s: %s", (mountFlags & MS_RDONLY) ? "ro" : "rw",
@@ -679,22 +683,30 @@ static void MountAllMounts() {
 
 static void ChangeRoot() {
   // move the real root to old_root, then detach it
-  char old_root[16] = "old-root-XXXXXX";
-  if (mkdtemp(old_root) == NULL) {
+  std::string old_root = opt.working_dir + "/" + "old-root-XXXXXX";
+  if (mkdtemp((char*)old_root.c_str()) == NULL) {
     perror("mkdtemp");
     DIE("mkdtemp returned NULL\n");
   }
+
   // pivot_root has no wrapper in libc, so we need syscall()
-  if (syscall(SYS_pivot_root, ".", old_root) < 0) {
+  if (syscall(SYS_pivot_root, ".", old_root.c_str()) < 0) {
     DIE("syscall");
   }
   if (chroot(".") < 0) {
     DIE("chroot");
   }
-  if (umount2(old_root, MNT_DETACH) < 0) {
+
+  // Now that we've chroot'ed, we need to elide the sandbox base from
+  // `old_root`.
+  //
+  // Note that this is "safe" because we check (in option parsing) that the
+  // sandbox base is a prefix of the working dir:
+  old_root = old_root.substr(opt.sandbox_root.size() + 1);
+  if (umount2(old_root.c_str(), MNT_DETACH) < 0) {
     DIE("umount2");
   }
-  if (rmdir(old_root) < 0) {
+  if (rmdir(old_root.c_str()) < 0) {
     DIE("rmdir");
   }
 }
@@ -724,6 +736,8 @@ int Pid1Main(void *sync_pipe_param) {
     MountDev();
     MountProc();
     MountAllMounts();
+    MakeFilesystemMostlyReadOnly(); // why was this not already included?
+    MountProc();
     ChangeRoot();
   } else {
     MountFilesystems();
