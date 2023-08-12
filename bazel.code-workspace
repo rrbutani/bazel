@@ -38,14 +38,24 @@
 			"bazel-bazel/external/**/*.jar",
 			"bazel-bazel/bazel-out/**/third_party/**/*.jar",
 		],
-		"java.compile.nullAnalysis.mode": "automatic"
+		"java.compile.nullAnalysis.mode": "automatic",
+		"bazel.buildifierExecutable": "buildifier",
+
+		// Note: be sure to open up the workspace folder in VSCode at the
+		// realpath of the checkout (not a mount or a symbolic link); if you
+		// don't then goto-def, etc. will jump you to the realpath "versions" of
+		// files; you end up with two of every file open.
+
+		//
+		"clangd.fallbackFlags": ["-I${workspaceFolder}"],
 	},
 	"extensions": {
 		"recommendations": [
 			"redhat.java",
 			"bazelbuild.vscode-bazel",
 			"sfdc.bazel-vscode-java",
-			"mkhl.direnv"
+			"mkhl.direnv",
+			"llvm-vs-code-extensions.vscode-clangd"
 		]
 	}
 }

@@ -12,6 +12,8 @@
         bazel-buildtools # for buildozer
 
         # jetbrains.idea-community
+
+        clang-tools_16 # clangd
       ];
 
       # see: https://github.com/Mic92/nix-ld
