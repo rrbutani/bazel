@@ -335,7 +335,13 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     }
 
     if (useHermeticTmp) {
-      commandLineBuilder.setWorkingDirectory(withinSandboxWorkingDirectory);
+      if (getSandboxOptions().useHermetic) {
+        // path should not be relative to the sandbox; the sandbox runner
+        // expects host paths for the working directory!
+        commandLineBuilder.setWorkingDirectory(sandboxExecRoot);
+      } else {
+        commandLineBuilder.setWorkingDirectory(withinSandboxWorkingDirectory);
+      }
     }
 
     if (!timeout.isZero()) {
@@ -392,6 +398,11 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     Set<Path> writableDirs = new TreeSet<>();
     writableDirs.addAll(super.getWritableDirs(sandboxExecRoot, withinSandboxExecRoot, env));
     FileSystem fs = sandboxExecRoot.getFileSystem();
+    // TODO: under `useHermetic` these don't actually do anything? if we wanted
+    // to make these accessible we'd use a bind mount I think.
+    //
+    // the sandbox will mount `/tmp` to `/tmp`, `/dev/shm` to `/dev/shm` but
+    // then we chroot and these become inaccessible
     writableDirs.add(fs.getPath("/dev/shm").resolveSymbolicLinks());
     writableDirs.add(fs.getPath("/tmp"));
 
@@ -412,6 +423,16 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
                     ? withinSandboxExecRoot.getRelative(d.relativeTo(sandboxExecRoot))
                     : d)
         .collect(toImmutableSet());
+
+    /* TODO(rrbutani, rebase): revisit
+    // TODO: gate on `sandboxTmp`?
+    if (getSandboxOptions().useHermetic) {
+      writableDirs.add(sandboxExecRoot.getRelative("../../_hermetic_tmp"));
+      writableDirs.add(sandboxExecRoot.getRelative("../../tmp"));
+    }
+
+    return writableDirs.build();
+    */
   }
 
   private ImmutableList<BindMount> prepareAndGetBindMounts(
@@ -421,6 +442,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
       @Nullable Path sandboxTmp)
       throws UserExecException, IOException {
     Path tmpPath = fileSystem.getPath(SLASH_TMP);
+    Path hermeticTmpPath = fileSystem.getPath("/_hermetic_tmp");
     final SortedMap<Path, Path> userBindMounts = new TreeMap<>();
     SandboxHelpers.mountAdditionalPaths(
         getSandboxOptions().sandboxAdditionalMounts, sandboxExecRootBase, userBindMounts);
@@ -436,6 +458,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     LinuxSandboxUtil.validateBindMounts(userBindMounts);
 
     if (sandboxTmp == null) {
+      // TODO: what about hermetic sandbox without hermetic tmp? (I guess this is disallowed?)
       return userBindMounts.entrySet().stream()
           .map(e -> BindMount.of(e.getKey(), e.getValue()))
           .collect(toImmutableList());
@@ -476,7 +499,33 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
             (withinSandbox, real) -> {
               PathFragment sandboxTmpSourceRoot = withinSandbox.asPath().relativeTo(tmpPath);
               result.add(BindMount.of(sandboxTmp.getRelative(sandboxTmpSourceRoot), real));
+
+              /*
+                // TODO(rrbutani, rebase): revisit
+                PathFragment sandboxTmpSourceRoot = withinSandbox.asPath().relativeTo(tmpPath);
+                if (!getSandboxOptions().useHermetic) {
+                  result.add(BindMount.of(sandboxTmp.getRelative(sandboxTmpSourceRoot), real));
+                } else {
+                  // if we're chrooting there's no need to prefix paths with the
+                  // sandboxTmp but we do want to pivot from `/tmp` to
+                  // `_hermetic_tmp`
+                  //
+                  // this is because the last bind mount is `/_hermetic_tmp`
+                  // onto `/tmp`; any mounts we make in `/tmp` before then will
+                  // be shadowed..
+                  Path hermeticTmpSourceRoot = hermeticTmpPath.getRelative(sandboxTmpSourceRoot);
+                  result.add(BindMount.of(
+                    hermeticTmpSourceRoot,
+                    real
+                  ));
+                }
+               */
             });
+
+    // bind mount in external local artifacts directly:
+    inputs
+        .getExternalSourceArtifactBindMounts()
+        .forEach((path) -> { result.add(BindMount.of(path, path)); });
 
     // Then mount $SANDBOX/_tmp at /tmp. At this point, even if the output base (and execroot) and
     // individual source roots are under /tmp, they are accessible at /tmp/bazel-*
