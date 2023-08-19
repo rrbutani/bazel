@@ -437,8 +437,13 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     //
     // the sandbox will mount `/tmp` to `/tmp`, `/dev/shm` to `/dev/shm` but
     // then we chroot and these become inaccessible
-    writableDirs.add(fs.getPath("/dev/shm").resolveSymbolicLinks());
-    writableDirs.add(fs.getPath("/tmp"));
+    //
+    // update: these actually cause problems! if the host path to the sandbox is
+    // on /dev/shm or /tmp...
+    if (!getSandboxOptions().useHermetic) {
+      writableDirs.add(fs.getPath("/dev/shm").resolveSymbolicLinks());
+      writableDirs.add(fs.getPath("/tmp"));
+    }
 
     // TODO: gate on `sandboxTmp`?
     if (getSandboxOptions().useHermetic) {
