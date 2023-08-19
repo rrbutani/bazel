@@ -54,6 +54,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
@@ -534,6 +535,86 @@ public final class SandboxHelpers {
               // `new_local_repository`!
               // todo
               Path p = inputArtifact.getPath();
+              logger.atInfo().log(
+                "External Source Artifact Path! `%s` (symlink = `%s`)", p, p.isSymbolicLink()
+              );
+
+              // TODO: to be robust we'd want to:
+              //  - walk down (i.e. starting at /) the parents of the current
+              //    path until we hit a symlink
+              //    + if we hit one, add the current path to the list
+              //      * we can just mount in this one symlink file...
+              //    + replace the path after resolving this symlink, then
+              //      restart
+              //  - once we reach the final resolved path, add that to the list
+              //    as well
+              // TODO: we probably want to set a depth limit
+              // TODO: we also need to guard against infinite symlink recursion...
+              // TODO: it would be nice to cache this...
+              int remaining_depth_count = 5;
+              PathFragment curr = p.asFragment();
+              FileSystem fs = p.getFileSystem();
+
+              process_path: while (true) {
+                if (--remaining_depth_count == 0) {
+                  logger.atWarning().log(
+                    "Giving up resolving External Source Artifact path `%s` at `%s`, too many levels of symlinks!", p, curr
+                  );
+                  break; // TODO: should we remove/gate our additions to `externalSourceArtifactPaths` thus far?
+                }
+
+                if (!curr.isAbsolute()) {
+                  logger.atSevere().log("path fragment `%s` is not absolute!", curr);
+                  break;
+                }
+
+                // walk the path, checking for symlinks at every level:
+                PathFragment walk = PathFragment.create("/"); // presumes that `/` is not a symlink...
+                Iterator<String> it = curr.segments().iterator();
+                while (it.hasNext()) {
+                  String seg = it.next();
+
+                  // append to `walk`
+                  walk = walk.getRelative(seg);
+
+                  // if we've reached a symlink:
+                  if (fs.getPath(walk).isSymbolicLink()) {
+                    // add it to the list of paths we need to mount in:
+                    externalSourceArtifactPaths.add(fs.getPath(walk));
+
+                    // resolve it:
+                    // PathFragment linkDest = fs.readSymbolicLink(walk);
+                    PathFragment linkDest = fs.getPath(walk).readSymbolicLink();
+
+                    // replace the current path with the "resolved" path
+                    // (i.e. append the rest of the path segments to the
+                    // symlink's target):
+                    //
+                    // note that because of how `getRelative` handles absolute
+                    // paths this will handle both relative symlinks and
+                    // absolute symlinks
+                    PathFragment newBase = walk.getRelative(linkDest);
+                    PathFragment newCurr = newBase;
+                    // it.forEachRemaining(s -> { newCurr = newCurr.getChild(s); });
+                    while (it.hasNext()) {
+                      newCurr = newCurr.getChild(it.next());
+                    }
+                    curr = newCurr;
+
+                    // restart the path walk:
+                    continue process_path;
+                  }
+                }
+
+                // if we've reached here the path `curr` contains no remaining
+                // symlinks
+                //
+                // this means we can add `curr` to our list of mounts and that
+                // we're done.
+                externalSourceArtifactPaths.add(fs.getPath(curr));
+                break;
+              }
+
               if (p.isSymbolicLink()) {
                 PathFragment link = p.readSymbolicLink();
                 if (link.isAbsolute()) {
