@@ -616,6 +616,7 @@ static void MountDev() {
   }
 }
 
+// TODO: unify with `MountFilesystems`?
 static void MountAllMounts() {
   for (const std::string &tmpfs_dir : opt.tmpfs_dirs) {
     PRINT_DEBUG("tmpfs: %s", tmpfs_dir.c_str());
@@ -668,7 +669,16 @@ static void MountAllMounts() {
       DIE("mount");
     }
   }
+
+  // TODO: we should ignore writable_files that aren't below the `sandbox_root`?
   for (const std::string &writable_file : opt.writable_files) {
+    if (!opt.sandbox_root.empty()) {
+      if (writable_file.find(opt.sandbox_root) == std::string::npos) {
+        PRINT_DEBUG("skipping writable path: %s; it is not below the sandbox base (%s)", writable_file.c_str(), opt.sandbox_root.c_str());
+        continue;
+      }
+    }
+
     PRINT_DEBUG("writable: %s", writable_file.c_str());
     if (mount(writable_file.c_str(), writable_file.c_str(), nullptr,
               MS_BIND | MS_REC, nullptr) < 0) {
@@ -731,10 +741,9 @@ int Pid1Main(void *sync_pipe_param) {
     MountSandboxAndGoThere();
     CreateEmptyFile();
     MountDev();
-    MountProc();
     MountAllMounts();
-    MakeFilesystemMostlyReadOnly(); // why was this not already included?
     MountProc();
+    MakeFilesystemMostlyReadOnly(); // why was this not already included?
     ChangeRoot();
   } else {
     MountFilesystems();
