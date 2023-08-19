@@ -198,7 +198,7 @@ static void ParseCommandLine(unique_ptr<vector<char *>> args) {
           }
         } else {
           Usage(args->front(),
-                "Multiple sandbox roots (-s) specified, expected one.");
+                "Multiple sandbox roots (-h) specified, expected one.");
         }
         break;
       case 'H':
