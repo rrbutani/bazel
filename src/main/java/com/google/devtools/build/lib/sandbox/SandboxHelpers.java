@@ -551,7 +551,7 @@ public final class SandboxHelpers {
               // TODO: we probably want to set a depth limit
               // TODO: we also need to guard against infinite symlink recursion...
               // TODO: it would be nice to cache this...
-              int remaining_depth_count = 5;
+              int remaining_depth_count = 10;
               PathFragment curr = p.asFragment();
               FileSystem fs = p.getFileSystem();
 
@@ -593,7 +593,7 @@ public final class SandboxHelpers {
                     // note that because of how `getRelative` handles absolute
                     // paths this will handle both relative symlinks and
                     // absolute symlinks
-                    PathFragment newBase = walk.getRelative(linkDest);
+                    PathFragment newBase = walk.replaceName(linkDest.getPathString());
                     PathFragment newCurr = newBase;
                     // it.forEachRemaining(s -> { newCurr = newCurr.getChild(s); });
                     while (it.hasNext()) {
