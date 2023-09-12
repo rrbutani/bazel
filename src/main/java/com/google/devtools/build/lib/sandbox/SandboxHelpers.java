@@ -607,6 +607,19 @@ public final class SandboxHelpers {
               // TODO: only handle files that aren't links into the execroot/source dir/originating package?
               // TODO: can we use `processResolvedSymlink`? I think the answer is no... idt our symlinks have the necessary Bazel information?
               //   - also we want to recursively follow/map in these symlinks which it probably doesn't make sense to do for action-produced symlinks?
+
+              // TODO: do we want to expand our purview to symlinks that are
+              // generated? (i.e. the output of an action, not a source artifact
+              // and not external)
+              //
+              // the motivation is to deal with actions that emit symlinks to
+              // absolute paths in the execroot (see
+              // `LinuxSandboxedSpawnRunner.java`)
+              //
+              // a good reason not to do this (without restrictions) is that it'd
+              // let actions arbitrarily pull paths into future sandbox
+              // invocations just by emitting symlinks to them
+              // logger.atInfo().log("%s: %s", inputArtifact, inputArtifact.getPath());
               if (inputArtifact.getRoot().isExternal()) {
                 // follow symlinks in inputArtifacts that originate from
                 // `new_local_repository`!
