@@ -509,6 +509,12 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
       // instead?
       Path externalDir = blazeDirs.getOutputBase().getRelative("external");
       result.add(BindMount.of(externalDir, externalDir));
+
+      // Unfortunately some actions (so far just the Turbine command's params
+      // file for the libanalysis_cluster hjar in Bazel) also make symlinks into
+      // the execroot by absolute path...
+      Path execrootDir = blazeDirs.getExecRootBase();
+      result.add(BindMount.of(execrootDir, execrootDir));
     }
 
     bindMounts.forEach((k, v) -> result.add(BindMount.of(k, v)));
