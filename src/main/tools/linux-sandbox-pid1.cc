@@ -443,9 +443,20 @@ static void MakeFilesystemMostlyReadOnly() {
 }
 
 static void MountProc() {
+  std::string proc_dest = "/proc";
+
+  if (opt.hermetic) {
+    proc_dest = opt.sandbox_root + "/proc";
+    if (mkdir(proc_dest.c_str(), 0755) < 0) {
+      DIE("mkdir(%s)", proc_dest.c_str());
+    }
+  }
+
+  PRINT_DEBUG("mounting proc on %s", proc_dest.c_str());
+
   // Mount a new proc on top of the old one, because the old one still refers to
   // our parent PID namespace.
-  if (mount("/proc", "/proc", "proc", MS_NODEV | MS_NOEXEC | MS_NOSUID,
+  if (mount("/proc", proc_dest.c_str(), "proc", MS_NODEV | MS_NOEXEC | MS_NOSUID,
             nullptr) < 0) {
     DIE("mount");
   }
