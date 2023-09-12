@@ -504,6 +504,19 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
       result.add(BindMount.of(tmpPath, sandboxTmp));
     }
 
+    if (getSandboxOptions().useHermetic) {
+      // Unfortunately we don't have a good way to deal with absolute path
+      // symlinks that actions make into external directories...
+      //
+      // To cope with this we also bind mount the external dir within the output
+      // base at the actual path it exists at outside of the sandbox...
+      //
+      // TODO: can we have our external artifact symlink thing handle this
+      // instead?
+      Path externalDir = blazeDirs.getOutputBase().getRelative("external");
+      result.add(BindMount.of(externalDir, externalDir));
+    }
+
     bindMounts.forEach((k, v) -> result.add(BindMount.of(k, v)));
     return result.build();
   }
