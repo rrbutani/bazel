@@ -451,9 +451,18 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     if (sandboxTmp != null) {
       // First mount the real exec root and the empty directory created as the working dir of the
       // action under $SANDBOX/_tmp
-      result.add(BindMount.of(sandboxTmp.getRelative(BAZEL_EXECROOT), blazeDirs.getExecRootBase()));
-      result.add(
-          BindMount.of(sandboxTmp.getRelative(BAZEL_WORKING_DIRECTORY), sandboxExecRootBase));
+      if (!getSandboxOptions().useHermetic) {
+        result.add(BindMount.of(sandboxTmp.getRelative(BAZEL_EXECROOT), blazeDirs.getExecRootBase()));
+        result.add(
+            BindMount.of(sandboxTmp.getRelative(BAZEL_WORKING_DIRECTORY), sandboxExecRootBase));
+      } else {
+        // TODO: I don't think we need working directory?
+        //
+        // note that since bind mount destinations are automatically prefixed
+        // with the sandbox base, we use `hermeticTmpPath` relative destinations
+        // (same as below)
+        result.add(BindMount.of(hermeticTmpPath.getRelative(BAZEL_EXECROOT), blazeDirs.getExecRootBase()));
+      }
 
       // Then mount the individual package roots under $SANDBOX/_tmp/bazel-source-roots
       inputs
