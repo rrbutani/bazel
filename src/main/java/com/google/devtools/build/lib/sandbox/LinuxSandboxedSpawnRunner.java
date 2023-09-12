@@ -492,10 +492,24 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     ImmutableList.Builder<BindMount> result = ImmutableList.builder();
     bindMounts.forEach((k, v) -> result.add(BindMount.of(k, v)));
 
-    // First mount the real exec root and the empty directory created as the working dir of the
-    // action under $SANDBOX/_tmp
-    result.add(BindMount.of(sandboxTmp.getRelative(BAZEL_EXECROOT), blazeDirs.getExecRootBase()));
-    result.add(BindMount.of(sandboxTmp.getRelative(BAZEL_WORKING_DIRECTORY), sandboxExecRootBase));
+    // TODO: support just hermetic sandbox, without sandboxTmp
+    // TODO(rrbutani, rebase): revisit; do we still need this? (I think so)
+    if (sandboxTmp != null) {
+      // First mount the real exec root and the empty directory created as the working dir of the
+      // action under $SANDBOX/_tmp
+      if (!getSandboxOptions().useHermetic) {
+        result.add(BindMount.of(sandboxTmp.getRelative(BAZEL_EXECROOT), blazeDirs.getExecRootBase()));
+        result.add(
+            BindMount.of(sandboxTmp.getRelative(BAZEL_WORKING_DIRECTORY), sandboxExecRootBase));
+      } else {
+        // TODO: I don't think we need working directory?
+        //
+        // note that since bind mount destinations are automatically prefixed
+        // with the sandbox base, we use `hermeticTmpPath` relative destinations
+        // (same as below)
+        result.add(BindMount.of(hermeticTmpPath.getRelative(BAZEL_EXECROOT), blazeDirs.getExecRootBase()));
+      }
+    }
 
     // Then mount the individual package roots under $SANDBOX/_tmp/bazel-source-roots
     inputs
