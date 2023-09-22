@@ -54,6 +54,7 @@ import com.google.devtools.build.lib.actions.AlreadyReportedActionExecutionExcep
 import com.google.devtools.build.lib.actions.Artifact;
 import com.google.devtools.build.lib.actions.Artifact.ArtifactExpander;
 import com.google.devtools.build.lib.actions.Artifact.OwnerlessArtifactWrapper;
+import com.google.devtools.build.lib.actions.Artifact.SourceArtifact;
 import com.google.devtools.build.lib.actions.Artifact.SpecialArtifact;
 import com.google.devtools.build.lib.actions.ArtifactPathResolver;
 import com.google.devtools.build.lib.actions.CachedActionEvent;
@@ -1621,6 +1622,12 @@ public final class SkyframeActionExecutor {
       try {
         if (input.isSourceArtifact()
             && metadataProvider.getInputMetadata(input).getType().isDirectory()) {
+
+          // If this source artifact has the exemption, skip the warning:
+          if ((input instanceof SourceArtifact) && ((SourceArtifact) input).hasUntrackedDirectoryExemption()) {
+            continue;
+          }
+
           // TODO(ulfjack): What about dependency checking of special files?
           String ownerString = action.getOwner().getLabel().toString();
           reporter.handle(

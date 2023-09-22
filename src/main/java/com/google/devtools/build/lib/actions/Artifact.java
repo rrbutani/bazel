@@ -935,10 +935,26 @@ public abstract class Artifact
   public static final class SourceArtifact extends Artifact {
     private final ArtifactOwner owner;
 
+    // if true, indicates that the target from which this source artifact was
+    // created has specified that it is okay for this artifact, if it is a
+    // directory, to be untracked.
+    //
+    // this silences warnings about directory sources being unsound in dependent
+    // actions
+    private boolean hasUntrackedDirectoryExemption;
+
     @VisibleForTesting
     public SourceArtifact(ArtifactRoot root, PathFragment execPath, ArtifactOwner owner) {
       super(root, execPath, execPath.hashCode());
       this.owner = owner;
+    }
+
+    public boolean hasUntrackedDirectoryExemption() {
+      return this.hasUntrackedDirectoryExemption;
+    }
+
+    public void setUntrackedDirectoryExemption(boolean val) {
+      this.hasUntrackedDirectoryExemption = val;
     }
 
     /**

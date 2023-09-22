@@ -17,7 +17,10 @@ package com.google.devtools.build.lib.rules.filegroup;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.devtools.build.lib.analysis.OutputGroupInfo.INTERNAL_SUFFIX;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.devtools.build.lib.actions.Artifact;
+import com.google.devtools.build.lib.actions.ArtifactOwner;
+import com.google.devtools.build.lib.actions.Artifact.SourceArtifact;
 import com.google.devtools.build.lib.actions.MutableActionGraph.ActionConflictException;
 import com.google.devtools.build.lib.analysis.ConfiguredTarget;
 import com.google.devtools.build.lib.analysis.OutputGroupInfo;
@@ -31,10 +34,12 @@ import com.google.devtools.build.lib.analysis.TransitiveInfoCollection;
 import com.google.devtools.build.lib.analysis.config.BuildConfigurationValue;
 import com.google.devtools.build.lib.analysis.test.InstrumentedFilesCollector;
 import com.google.devtools.build.lib.analysis.test.InstrumentedFilesCollector.InstrumentationSpec;
+import com.google.devtools.build.lib.cmdline.Label;
 import com.google.devtools.build.lib.analysis.test.InstrumentedFilesInfo;
 import com.google.devtools.build.lib.collect.nestedset.NestedSet;
 import com.google.devtools.build.lib.collect.nestedset.NestedSetBuilder;
 import com.google.devtools.build.lib.collect.nestedset.Order;
+import com.google.devtools.build.lib.packages.BuildType;
 import com.google.devtools.build.lib.packages.Type;
 import com.google.devtools.build.lib.util.FileTypeSet;
 import com.google.devtools.build.lib.vfs.PathFragment;
@@ -45,6 +50,12 @@ import javax.annotation.Nullable;
  * ConfiguredTarget for "filegroup".
  */
 public class Filegroup implements RuleConfiguredTargetFactory {
+
+  /** Allows users to suppress soundness workings for directory source artifacts.
+   *
+   * Only applies to files in `srcs` of the `filegroup`.
+  */
+  private static final String ALLOW_UNSOUND_DIRECTORY_SOURCES_TAG = "allow-unsound-directory-sources-in-direct-srcs";
 
   /** Error message for output groups that are explicitly forbidden from filegroup reference. */
   public static final String ILLEGAL_OUTPUT_GROUP_ERROR =
@@ -64,6 +75,52 @@ public class Filegroup implements RuleConfiguredTargetFactory {
         outputGroupName.isEmpty()
             ? PrerequisiteArtifacts.nestedSet(ruleContext, "srcs")
             : getArtifactsForOutputGroup(outputGroupName, ruleContext.getPrerequisites("srcs"));
+    boolean has_directory_source_exemption =
+        ruleContext
+          .attributes()
+          .get("tags", Type.STRING_LIST)
+          .contains(ALLOW_UNSOUND_DIRECTORY_SOURCES_TAG);
+    if (has_directory_source_exemption) {
+      // TODO: do better re-assembling the NestedSet here...
+      NestedSetBuilder<Artifact> newFilesToBuild = NestedSetBuilder.stableOrder();
+      ImmutableSet<Label> directDeps =  ImmutableSet.copyOf(
+        (List<Label>)ruleContext.attributes().get("srcs", BuildType.LABEL_LIST)
+      );
+
+      // TODO: what's a better way to do this?
+      //
+      // We only want to apply the exemption to source artifacts that are
+      // "direct" sources of this filegroup; i.e.:
+      // ```
+      // filegroup(
+      //   name = "a", srcs = ["dir", ":other"], tags = ["<exempt-tag>"],
+      // )
+      // filegroup(
+      //   name = "other", srcs = ["other-dir"],
+      // )
+      // ```
+      //
+      // in the above, `other-dir` should *not* be exempted
+      //
+      // unfortunately for us, source artifacts are their own owners — once we
+      // ask `other` for it's `FileProvider` files we lose that `other-dir` is a
+      // dep of `a` via the `other` filegroup
+
+      for (Artifact file : filesToBuild.toList()) {
+        ArtifactOwner owner = file.getArtifactOwner();
+
+        if (directDeps.contains(owner.getLabel()) && file instanceof SourceArtifact) {
+          SourceArtifact sourceFile = (SourceArtifact)file;
+          sourceFile.setUntrackedDirectoryExemption(true);
+
+          newFilesToBuild.add(sourceFile);
+        } else {
+          newFilesToBuild.add(file);
+        }
+      }
+
+      filesToBuild = newFilesToBuild.build();
+    }
 
     InstrumentedFilesInfo instrumentedFilesProvider =
         InstrumentedFilesCollector.collect(
