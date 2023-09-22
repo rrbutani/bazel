@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 3,
-  "moduleFileHash": "181678df5c28839fced02f5f546f99ae5a99c21eb263975d3244e17497b7064f",
+  "moduleFileHash": "c2b703f82138236950117180ca552978b99e9621aa77fd8cd406b4d6e4dac31e",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -31,7 +31,8 @@
         "@bazel_tools//tools/python:autodetecting_toolchain",
         "@local_config_winsdk//:all",
         "//src/main/res:empty_rc_toolchain",
-        "//:bazel_java_toolchain_definition"
+        "//:bazel_java_toolchain_definition",
+        "@rust_toolchains//:all"
       ],
       "extensionUsages": [
         {
@@ -40,7 +41,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 66,
+            "line": 74,
             "column": 22
           },
           "imports": {
@@ -169,7 +170,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 67,
+                "line": 75,
                 "column": 14
               }
             },
@@ -184,7 +185,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -199,7 +200,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -214,7 +215,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -229,7 +230,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -244,7 +245,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -259,7 +260,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -274,7 +275,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -289,7 +290,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -304,7 +305,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 190,
+                "line": 198,
                 "column": 19
               }
             },
@@ -332,7 +333,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 333,
+                "line": 352,
                 "column": 22
               }
             }
@@ -346,7 +347,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 211,
+            "line": 219,
             "column": 32
           },
           "imports": {
@@ -386,7 +387,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 245,
+            "line": 253,
             "column": 23
           },
           "imports": {},
@@ -400,7 +401,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 246,
+                "line": 254,
                 "column": 17
               }
             }
@@ -414,7 +415,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 248,
+            "line": 256,
             "column": 20
           },
           "imports": {
@@ -432,7 +433,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 249,
+                "line": 257,
                 "column": 10
               }
             }
@@ -446,7 +447,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 260,
+            "line": 268,
             "column": 33
           },
           "imports": {
@@ -477,7 +478,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 281,
+            "line": 289,
             "column": 29
           },
           "imports": {
@@ -489,12 +490,46 @@
           "hasNonDevUseExtension": true
         },
         {
+          "extensionBzlFile": "@rules_rust//rust:extensions.bzl",
+          "extensionName": "rust",
+          "usingModule": "<root>",
+          "location": {
+            "file": "@@//:MODULE.bazel",
+            "line": 292,
+            "column": 21
+          },
+          "imports": {
+            "rust_toolchains": "rust_toolchains",
+            "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable_tools": "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable_tools"
+          },
+          "devImports": [],
+          "tags": [
+            {
+              "tagName": "toolchain",
+              "attributeValues": {
+                "edition": "2021",
+                "versions": [
+                  "1.74.0"
+                ]
+              },
+              "devDependency": false,
+              "location": {
+                "file": "@@//:MODULE.bazel",
+                "line": 293,
+                "column": 15
+              }
+            }
+          ],
+          "hasDevUseExtension": false,
+          "hasNonDevUseExtension": true
+        },
+        {
           "extensionBzlFile": "@io_bazel//:extensions.bzl",
           "extensionName": "bazel_test_deps",
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 288,
+            "line": 305,
             "column": 32
           },
           "imports": {
@@ -513,7 +548,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 296,
+            "line": 313,
             "column": 31
           },
           "imports": {
@@ -530,7 +565,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 299,
+            "line": 316,
             "column": 48
           },
           "imports": {
@@ -547,7 +582,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 302,
+            "line": 319,
             "column": 20
           },
           "imports": {
@@ -566,7 +601,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 303,
+                "line": 320,
                 "column": 12
               }
             }
@@ -580,7 +615,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 355,
+            "line": 374,
             "column": 35
           },
           "imports": {
@@ -597,7 +632,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 358,
+            "line": 377,
             "column": 42
           },
           "imports": {
@@ -622,6 +657,7 @@
         "blake3": "blake3@1.3.3.bcr.1",
         "zlib": "zlib@1.3",
         "rules_cc": "rules_cc@0.0.9",
+        "rules_rust": "rules_rust@_",
         "rules_java": "rules_java@7.3.1",
         "rules_graalvm": "rules_graalvm@0.10.3",
         "rules_proto": "rules_proto@5.3.0-21.7",
@@ -1092,6 +1128,89 @@
           },
           "remote_patch_strip": 0
         }
+      }
+    },
+    "rules_rust@_": {
+      "name": "rules_rust",
+      "version": "0.20.0",
+      "key": "rules_rust@_",
+      "repoName": "rules_rust",
+      "executionPlatformsToRegister": [],
+      "toolchainsToRegister": [],
+      "extensionUsages": [
+        {
+          "extensionBzlFile": "@rules_rust//rust/private:extensions.bzl",
+          "extensionName": "internal_deps",
+          "usingModule": "rules_rust@_",
+          "location": {
+            "file": "@@rules_rust~override//:MODULE.bazel",
+            "line": 17,
+            "column": 30
+          },
+          "imports": {
+            "rules_rust_tinyjson": "rules_rust_tinyjson"
+          },
+          "devImports": [],
+          "tags": [],
+          "hasDevUseExtension": false,
+          "hasNonDevUseExtension": true
+        },
+        {
+          "extensionBzlFile": "@rules_rust//rust:extensions.bzl",
+          "extensionName": "rust",
+          "usingModule": "rules_rust@_",
+          "location": {
+            "file": "@@rules_rust~override//:MODULE.bazel",
+            "line": 23,
+            "column": 21
+          },
+          "imports": {
+            "rust_toolchains": "rust_toolchains",
+            "rust_host_tools": "rust_host_tools"
+          },
+          "devImports": [],
+          "tags": [
+            {
+              "tagName": "toolchain",
+              "attributeValues": {
+                "edition": "2021"
+              },
+              "devDependency": false,
+              "location": {
+                "file": "@@rules_rust~override//:MODULE.bazel",
+                "line": 28,
+                "column": 15
+              }
+            }
+          ],
+          "hasDevUseExtension": false,
+          "hasNonDevUseExtension": true
+        },
+        {
+          "extensionBzlFile": "@rules_rust//crate_universe/private/module_extensions:cargo_bazel_bootstrap.bzl",
+          "extensionName": "cargo_bazel_bootstrap",
+          "usingModule": "rules_rust@_",
+          "location": {
+            "file": "@@rules_rust~override//:MODULE.bazel",
+            "line": 38,
+            "column": 38
+          },
+          "imports": {
+            "cargo_bazel_bootstrap": "cargo_bazel_bootstrap"
+          },
+          "devImports": [],
+          "tags": [],
+          "hasDevUseExtension": false,
+          "hasNonDevUseExtension": true
+        }
+      ],
+      "deps": {
+        "platforms": "platforms@0.0.8",
+        "rules_cc": "rules_cc@0.0.9",
+        "bazel_skylib": "bazel_skylib@1.5.0",
+        "build_bazel_apple_support": "apple_support@1.8.1",
+        "bazel_tools": "bazel_tools@_",
+        "local_config_platform": "local_config_platform@_"
       }
     },
     "rules_java@7.3.1": {
@@ -2251,7 +2370,7 @@
         "bzlTransitiveDigest": "DSeXJLRZhP/A/L6FhhbvcMg1auJWnRmHqERfXhXJwZY=",
         "accumulatedFileDigests": {
           "@@//src/test/tools/bzlmod:MODULE.bazel.lock": "7fd09363e734c78e66a87157b9baab177a58dec56bc8645ecc084ef3eff14360",
-          "@@//:MODULE.bazel": "181678df5c28839fced02f5f546f99ae5a99c21eb263975d3244e17497b7064f"
+          "@@//:MODULE.bazel": "c2b703f82138236950117180ca552978b99e9621aa77fd8cd406b4d6e4dac31e"
         },
         "envVariables": {},
         "generatedRepoSpecs": {
@@ -3786,7 +3905,7 @@
             "ruleClassName": "_toolchain_config",
             "attributes": {
               "name": "rules_graalvm~0.10.3~graalvm~graalvm_toolchains",
-              "build_file": "\nconfig_setting(\n    name = \"prefix_version_setting\",\n    values = {\"java_runtime_version\": \"graalvm_20\"},\n    visibility = [\"//visibility:private\"],\n)\nconfig_setting(\n    name = \"version_setting\",\n    values = {\"java_runtime_version\": \"20\"},\n    visibility = [\"//visibility:private\"],\n)\nalias(\n    name = \"version_or_prefix_version_setting\",\n    actual = select({\n        \":version_setting\": \":version_setting\",\n        \"//conditions:default\": \":prefix_version_setting\",\n    }),\n    visibility = [\"//visibility:private\"],\n)\nalias(\n    name = \"toolchain_gvm\",\n    actual = \"gvm\",\n    visibility = [\"//visibility:public\"],\n)\ntoolchain(\n    name = \"gvm\",\n    exec_compatible_with = [\n        \n    ],\n    target_compatible_with = [\n        \n    ],\n    toolchain = \"@graalvm//:gvm\",\n    toolchain_type = \"@rules_graalvm//graalvm/toolchain\",\n    visibility = [\"//visibility:public\"],\n)\ntoolchain(\n    name = \"toolchain\",\n    target_compatible_with = [],\n    target_settings = [\":version_or_prefix_version_setting\"],\n    toolchain_type = \"@bazel_tools//tools/jdk:runtime_toolchain_type\",\n    toolchain = \"@graalvm//:jdk\",\n    visibility = [\"//visibility:public\"],\n)\n\n"
+              "build_file": "\nconfig_setting(\n    name = \"prefix_version_setting\",\n    values = {\"java_runtime_version\": \"graalvm_20\"},\n    visibility = [\"//visibility:private\"],\n)\nconfig_setting(\n    name = \"version_setting\",\n    values = {\"java_runtime_version\": \"20\"},\n    visibility = [\"//visibility:private\"],\n)\nalias(\n    name = \"version_or_prefix_version_setting\",\n    actual = select({\n        \":version_setting\": \":version_setting\",\n        \"//conditions:default\": \":prefix_version_setting\",\n    }),\n    visibility = [\"//visibility:private\"],\n)\nalias(\n    name = \"toolchain_gvm\",\n    actual = \"gvm\",\n    visibility = [\"//visibility:public\"],\n)\ntoolchain(\n    name = \"gvm\",\n    exec_compatible_with = [\n        \n    ],\n    target_compatible_with = [\n        \n    ],\n    toolchain = \"@graalvm//:gvm\",\n    toolchain_type = \"@rules_graalvm//graalvm/toolchain\",\n    visibility = [\"//visibility:public\"],\n)\ntoolchain(\n    name = \"toolchain\",\n    target_compatible_with = [],\n    target_settings = [\":version_or_prefix_version_setting\"],\n    toolchain_type = \"@bazel_tools//tools/jdk:runtime_toolchain_type\",\n    toolchain = \"@graalvm//:jdk\",\n    visibility = [\"//visibility:public\"],\n)\n\ntoolchain(\n    name = \"bootstrap_runtime_toolchain\",\n    # These constraints are not required for correctness, but prevent fetches of remote JDK for\n    # different architectures. As every Java compilation toolchain depends on a bootstrap runtime in\n    # the same configuration, this constraint will not result in toolchain resolution failures.\n    exec_compatible_with = [],\n    target_settings = [\":version_or_prefix_version_setting\"],\n    toolchain_type = \"@bazel_tools//tools/jdk:bootstrap_runtime_toolchain_type\",\n    toolchain = \"@graalvm//:jdk\",\n    visibility = [\"//visibility:public\"],\n)\n\n"
             }
           },
           "graalvm": {
@@ -8132,137 +8251,8 @@
       }
     },
     "@@rules_python~0.26.0//python/extensions:pip.bzl%pip": {
-      "os:osx,arch:aarch64": {
-        "bzlTransitiveDigest": "shSLRxSm2IldZrKYJQFQvQybGd4SIL6XQSPu84HpeJE=",
-        "accumulatedFileDigests": {
-          "@@//:requirements.txt": "ff12967a755bb8e9b4c92524f6471a99e14c30474a3d428547c55745ec8f23a0"
-        },
-        "envVariables": {},
-        "generatedRepoSpecs": {
-          "bazel_pip_dev_deps": {
-            "bzlFile": "@@rules_python~0.26.0//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "pip_hub_repository_bzlmod",
-            "attributes": {
-              "name": "rules_python~0.26.0~pip~bazel_pip_dev_deps",
-              "repo_name": "bazel_pip_dev_deps",
-              "whl_map": {
-                "bazel_runfiles": [
-                  "3.8.18"
-                ]
-              },
-              "default_version": "3.8.18"
-            }
-          },
-          "bazel_pip_dev_deps_38_bazel_runfiles": {
-            "bzlFile": "@@rules_python~0.26.0//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "whl_library",
-            "attributes": {
-              "name": "rules_python~0.26.0~pip~bazel_pip_dev_deps_38_bazel_runfiles",
-              "requirement": "bazel-runfiles==0.24.0",
-              "repo": "bazel_pip_dev_deps_38",
-              "repo_prefix": "bazel_pip_dev_deps_38_",
-              "python_interpreter": "",
-              "python_interpreter_target": "@@rules_python~0.26.0~python~python_3_8_aarch64-apple-darwin//:bin/python3",
-              "quiet": true,
-              "timeout": 600,
-              "isolated": true,
-              "extra_pip_args": [],
-              "download_only": false,
-              "pip_data_exclude": [],
-              "enable_implicit_namespace_pkgs": false,
-              "environment": {}
-            }
-          }
-        }
-      },
-      "os:osx,arch:x86_64": {
-        "bzlTransitiveDigest": "78B4TR2R7hyLdKqsk9J9c+QKXzs6+h9jxPpij/zjmhE=",
-        "accumulatedFileDigests": {
-          "@@//:requirements.txt": "ff12967a755bb8e9b4c92524f6471a99e14c30474a3d428547c55745ec8f23a0"
-        },
-        "envVariables": {},
-        "generatedRepoSpecs": {
-          "bazel_pip_dev_deps": {
-            "bzlFile": "@@rules_python~0.26.0//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "pip_hub_repository_bzlmod",
-            "attributes": {
-              "name": "rules_python~0.26.0~pip~bazel_pip_dev_deps",
-              "repo_name": "bazel_pip_dev_deps",
-              "whl_map": {
-                "bazel_runfiles": [
-                  "3.8.18"
-                ]
-              },
-              "default_version": "3.8.18"
-            }
-          },
-          "bazel_pip_dev_deps_38_bazel_runfiles": {
-            "bzlFile": "@@rules_python~0.26.0//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "whl_library",
-            "attributes": {
-              "name": "rules_python~0.26.0~pip~bazel_pip_dev_deps_38_bazel_runfiles",
-              "requirement": "bazel-runfiles==0.24.0",
-              "repo": "bazel_pip_dev_deps_38",
-              "repo_prefix": "bazel_pip_dev_deps_38_",
-              "python_interpreter": "",
-              "python_interpreter_target": "@@rules_python~0.26.0~python~python_3_8_x86_64-apple-darwin//:bin/python3",
-              "quiet": true,
-              "timeout": 600,
-              "isolated": true,
-              "extra_pip_args": [],
-              "download_only": false,
-              "pip_data_exclude": [],
-              "enable_implicit_namespace_pkgs": false,
-              "environment": {}
-            }
-          }
-        }
-      },
-      "os:windows,arch:amd64": {
-        "bzlTransitiveDigest": "1n3i6I4QaccRmHfapI0NgKddkJyR6/zBp0gptv/qmV0=",
-        "accumulatedFileDigests": {
-          "@@//:requirements.txt": "ff12967a755bb8e9b4c92524f6471a99e14c30474a3d428547c55745ec8f23a0"
-        },
-        "envVariables": {},
-        "generatedRepoSpecs": {
-          "bazel_pip_dev_deps": {
-            "bzlFile": "@@rules_python~0.26.0//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "pip_hub_repository_bzlmod",
-            "attributes": {
-              "name": "rules_python~0.26.0~pip~bazel_pip_dev_deps",
-              "repo_name": "bazel_pip_dev_deps",
-              "whl_map": {
-                "bazel_runfiles": [
-                  "3.8.18"
-                ]
-              },
-              "default_version": "3.8.18"
-            }
-          },
-          "bazel_pip_dev_deps_38_bazel_runfiles": {
-            "bzlFile": "@@rules_python~0.26.0//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "whl_library",
-            "attributes": {
-              "name": "rules_python~0.26.0~pip~bazel_pip_dev_deps_38_bazel_runfiles",
-              "requirement": "bazel-runfiles==0.24.0",
-              "repo": "bazel_pip_dev_deps_38",
-              "repo_prefix": "bazel_pip_dev_deps_38_",
-              "python_interpreter": "",
-              "python_interpreter_target": "@@rules_python~0.26.0~python~python_3_8_x86_64-pc-windows-msvc//:python.exe",
-              "quiet": true,
-              "timeout": 600,
-              "isolated": true,
-              "extra_pip_args": [],
-              "download_only": false,
-              "pip_data_exclude": [],
-              "enable_implicit_namespace_pkgs": false,
-              "environment": {}
-            }
-          }
-        }
-      },
       "os:linux,arch:amd64": {
-        "bzlTransitiveDigest": "r06IxPoMys64H4SehNDLcinBWTvN8335IGht0hO/3RY=",
+        "bzlTransitiveDigest": "MghL1B4s4TGwYYy2VbBRZ9l8pkWFVJgq3XxJdBgYERQ=",
         "accumulatedFileDigests": {
           "@@//:requirements.txt": "ff12967a755bb8e9b4c92524f6471a99e14c30474a3d428547c55745ec8f23a0"
         },
@@ -8771,6 +8761,1611 @@
               "sha256": "939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc",
               "type": "zip",
               "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          }
+        }
+      }
+    },
+    "@@rules_rust~override//crate_universe/private/module_extensions:cargo_bazel_bootstrap.bzl%cargo_bazel_bootstrap": {
+      "general": {
+        "bzlTransitiveDigest": "/MSS7fBW0yHOorH16K3HtkFepoppdY7EvU7rWgRM37I=",
+        "accumulatedFileDigests": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "cargo_bazel_bootstrap": {
+            "bzlFile": "@@rules_rust~override//cargo:cargo_bootstrap.bzl",
+            "ruleClassName": "cargo_bootstrap_repository",
+            "attributes": {
+              "name": "rules_rust~override~cargo_bazel_bootstrap~cargo_bazel_bootstrap",
+              "srcs": [
+                "@@rules_rust~override//crate_universe:src/cli.rs",
+                "@@rules_rust~override//crate_universe:src/cli/generate.rs",
+                "@@rules_rust~override//crate_universe:src/cli/query.rs",
+                "@@rules_rust~override//crate_universe:src/cli/splice.rs",
+                "@@rules_rust~override//crate_universe:src/cli/vendor.rs",
+                "@@rules_rust~override//crate_universe:src/config.rs",
+                "@@rules_rust~override//crate_universe:src/context.rs",
+                "@@rules_rust~override//crate_universe:src/context/crate_context.rs",
+                "@@rules_rust~override//crate_universe:src/context/platforms.rs",
+                "@@rules_rust~override//crate_universe:src/lib.rs",
+                "@@rules_rust~override//crate_universe:src/lockfile.rs",
+                "@@rules_rust~override//crate_universe:src/main.rs",
+                "@@rules_rust~override//crate_universe:src/metadata.rs",
+                "@@rules_rust~override//crate_universe:src/metadata/dependency.rs",
+                "@@rules_rust~override//crate_universe:src/metadata/metadata_annotation.rs",
+                "@@rules_rust~override//crate_universe:src/rendering.rs",
+                "@@rules_rust~override//crate_universe:src/rendering/template_engine.rs",
+                "@@rules_rust~override//crate_universe:src/rendering/templates/module_bzl.j2",
+                "@@rules_rust~override//crate_universe:src/rendering/templates/partials/header.j2",
+                "@@rules_rust~override//crate_universe:src/rendering/templates/partials/module/aliases_map.j2",
+                "@@rules_rust~override//crate_universe:src/rendering/templates/partials/module/deps_map.j2",
+                "@@rules_rust~override//crate_universe:src/rendering/templates/partials/module/repo_git.j2",
+                "@@rules_rust~override//crate_universe:src/rendering/templates/partials/module/repo_http.j2",
+                "@@rules_rust~override//crate_universe:src/rendering/templates/vendor_module.j2",
+                "@@rules_rust~override//crate_universe:src/splicing.rs",
+                "@@rules_rust~override//crate_universe:src/splicing/cargo_config.rs",
+                "@@rules_rust~override//crate_universe:src/splicing/crate_index_lookup.rs",
+                "@@rules_rust~override//crate_universe:src/splicing/splicer.rs",
+                "@@rules_rust~override//crate_universe:src/test.rs",
+                "@@rules_rust~override//crate_universe:src/utils.rs",
+                "@@rules_rust~override//crate_universe:src/utils/starlark.rs",
+                "@@rules_rust~override//crate_universe:src/utils/starlark/glob.rs",
+                "@@rules_rust~override//crate_universe:src/utils/starlark/label.rs",
+                "@@rules_rust~override//crate_universe:src/utils/starlark/select.rs",
+                "@@rules_rust~override//crate_universe:src/utils/starlark/serialize.rs",
+                "@@rules_rust~override//crate_universe:src/utils/starlark/target_compatible_with.rs"
+              ],
+              "binary": "cargo-bazel",
+              "cargo_lockfile": "@@rules_rust~override//crate_universe:Cargo.lock",
+              "cargo_toml": "@@rules_rust~override//crate_universe:Cargo.toml",
+              "version": "1.74.0",
+              "timeout": 900,
+              "rust_toolchain_cargo_template": "@rust_host_tools//:bin/{tool}",
+              "rust_toolchain_rustc_template": "@rust_host_tools//:bin/{tool}"
+            }
+          }
+        }
+      }
+    },
+    "@@rules_rust~override//rust:extensions.bzl%rust": {
+      "general": {
+        "bzlTransitiveDigest": "hHZoob0qlsOu1nAR+686zSlO0S5qu1PgKIPGyRT/kEw=",
+        "accumulatedFileDigests": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "rust_windows_x86_64__wasm32-wasi__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_x86_64__wasm32-wasi__stable_tools",
+              "exec_triple": "x86_64-pc-windows-msvc",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-wasi",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_darwin_aarch64__wasm32-wasi__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_aarch64__wasm32-wasi__stable_tools",
+              "exec_triple": "aarch64-apple-darwin",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-wasi",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_darwin_x86_64__wasm32-wasi__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_x86_64__wasm32-wasi__stable_tools",
+              "exec_triple": "x86_64-apple-darwin",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-wasi",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_freebsd_x86_64__wasm32-unknown-unknown__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_freebsd_x86_64__wasm32-unknown-unknown__stable_tools",
+              "exec_triple": "x86_64-unknown-freebsd",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-unknown-unknown",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_freebsd_x86_64__wasm32-wasi__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_freebsd_x86_64__wasm32-wasi__stable",
+              "toolchain": "@rust_freebsd_x86_64__wasm32-wasi__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:freebsd"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@platforms//os:wasi"
+              ]
+            }
+          },
+          "rust_linux_aarch64__aarch64-unknown-linux-gnu__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_aarch64__aarch64-unknown-linux-gnu__stable_tools",
+              "exec_triple": "aarch64-unknown-linux-gnu",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "aarch64-unknown-linux-gnu",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_linux_aarch64__aarch64-unknown-linux-gnu__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_aarch64__aarch64-unknown-linux-gnu__stable",
+              "toolchain": "@rust_linux_aarch64__aarch64-unknown-linux-gnu__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:linux"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:linux"
+              ]
+            }
+          },
+          "rustfmt_nightly-2023-11-16__x86_64-unknown-freebsd": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__x86_64-unknown-freebsd",
+              "toolchain": "@rustfmt_nightly-2023-11-16__x86_64-unknown-freebsd_tools//:rustfmt_toolchain",
+              "toolchain_type": "@rules_rust//rust/rustfmt:toolchain_type",
+              "target_settings": [],
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:freebsd"
+              ],
+              "target_compatible_with": []
+            }
+          },
+          "rust_windows_x86_64": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_set_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_x86_64",
+              "toolchains": [
+                "@rust_windows_x86_64__x86_64-pc-windows-msvc__stable//:toolchain",
+                "@rust_windows_x86_64__wasm32-unknown-unknown__stable//:toolchain",
+                "@rust_windows_x86_64__wasm32-wasi__stable//:toolchain"
+              ]
+            }
+          },
+          "rust_linux_aarch64__wasm32-unknown-unknown__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_aarch64__wasm32-unknown-unknown__stable",
+              "toolchain": "@rust_linux_aarch64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:linux"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@rules_rust//rust/platform/os:unknown"
+              ]
+            }
+          },
+          "rust_windows_aarch64__wasm32-wasi__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_aarch64__wasm32-wasi__stable_tools",
+              "exec_triple": "aarch64-pc-windows-msvc",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-wasi",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_x86_64__x86_64-unknown-linux-gnu__stable_tools",
+              "exec_triple": "x86_64-unknown-linux-gnu",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "x86_64-unknown-linux-gnu",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_windows_aarch64__aarch64-pc-windows-msvc__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_aarch64__aarch64-pc-windows-msvc__stable_tools",
+              "exec_triple": "aarch64-pc-windows-msvc",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "aarch64-pc-windows-msvc",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_windows_aarch64": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_set_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_aarch64",
+              "toolchains": [
+                "@rust_windows_aarch64__aarch64-pc-windows-msvc__stable//:toolchain",
+                "@rust_windows_aarch64__wasm32-unknown-unknown__stable//:toolchain",
+                "@rust_windows_aarch64__wasm32-wasi__stable//:toolchain"
+              ]
+            }
+          },
+          "rust_linux_x86_64__wasm32-unknown-unknown__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_x86_64__wasm32-unknown-unknown__stable",
+              "toolchain": "@rust_linux_x86_64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:linux"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@rules_rust//rust/platform/os:unknown"
+              ]
+            }
+          },
+          "rust_windows_x86_64__x86_64-pc-windows-msvc__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_x86_64__x86_64-pc-windows-msvc__stable_tools",
+              "exec_triple": "x86_64-pc-windows-msvc",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "x86_64-pc-windows-msvc",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rustfmt_nightly-2023-11-16__aarch64-pc-windows-msvc_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rustfmt_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__aarch64-pc-windows-msvc_tools",
+              "version": "nightly",
+              "iso_date": "2023-11-16",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {},
+              "exec_triple": "aarch64-pc-windows-msvc"
+            }
+          },
+          "rustfmt_nightly-2023-11-16__x86_64-unknown-linux-gnu": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__x86_64-unknown-linux-gnu",
+              "toolchain": "@rustfmt_nightly-2023-11-16__x86_64-unknown-linux-gnu_tools//:rustfmt_toolchain",
+              "toolchain_type": "@rules_rust//rust/rustfmt:toolchain_type",
+              "target_settings": [],
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:linux"
+              ],
+              "target_compatible_with": []
+            }
+          },
+          "rustfmt_nightly-2023-11-16__x86_64-apple-darwin": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__x86_64-apple-darwin",
+              "toolchain": "@rustfmt_nightly-2023-11-16__x86_64-apple-darwin_tools//:rustfmt_toolchain",
+              "toolchain_type": "@rules_rust//rust/rustfmt:toolchain_type",
+              "target_settings": [],
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:osx"
+              ],
+              "target_compatible_with": []
+            }
+          },
+          "rust_freebsd_x86_64__x86_64-unknown-freebsd__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_freebsd_x86_64__x86_64-unknown-freebsd__stable_tools",
+              "exec_triple": "x86_64-unknown-freebsd",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "x86_64-unknown-freebsd",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_darwin_x86_64__wasm32-unknown-unknown__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_x86_64__wasm32-unknown-unknown__stable",
+              "toolchain": "@rust_darwin_x86_64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:osx"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@rules_rust//rust/platform/os:unknown"
+              ]
+            }
+          },
+          "rust_darwin_aarch64__wasm32-unknown-unknown__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_aarch64__wasm32-unknown-unknown__stable",
+              "toolchain": "@rust_darwin_aarch64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:osx"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@rules_rust//rust/platform/os:unknown"
+              ]
+            }
+          },
+          "rust_darwin_aarch64__aarch64-apple-darwin__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_aarch64__aarch64-apple-darwin__stable",
+              "toolchain": "@rust_darwin_aarch64__aarch64-apple-darwin__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:osx"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:osx"
+              ]
+            }
+          },
+          "rustfmt_nightly-2023-11-16__x86_64-unknown-linux-gnu_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rustfmt_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__x86_64-unknown-linux-gnu_tools",
+              "version": "nightly",
+              "iso_date": "2023-11-16",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {},
+              "exec_triple": "x86_64-unknown-linux-gnu"
+            }
+          },
+          "rust_windows_x86_64__wasm32-wasi__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_x86_64__wasm32-wasi__stable",
+              "toolchain": "@rust_windows_x86_64__wasm32-wasi__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:windows"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@platforms//os:wasi"
+              ]
+            }
+          },
+          "rust_analyzer_1.74.0_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_analyzer_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_analyzer_1.74.0_tools",
+              "version": "1.74.0",
+              "iso_date": "",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_darwin_x86_64": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_set_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_x86_64",
+              "toolchains": [
+                "@rust_darwin_x86_64__x86_64-apple-darwin__stable//:toolchain",
+                "@rust_darwin_x86_64__wasm32-unknown-unknown__stable//:toolchain",
+                "@rust_darwin_x86_64__wasm32-wasi__stable//:toolchain"
+              ]
+            }
+          },
+          "rust_windows_aarch64__wasm32-wasi__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_aarch64__wasm32-wasi__stable",
+              "toolchain": "@rust_windows_aarch64__wasm32-wasi__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:windows"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@platforms//os:wasi"
+              ]
+            }
+          },
+          "rust_darwin_x86_64__wasm32-unknown-unknown__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_x86_64__wasm32-unknown-unknown__stable_tools",
+              "exec_triple": "x86_64-apple-darwin",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-unknown-unknown",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_darwin_aarch64__wasm32-unknown-unknown__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_aarch64__wasm32-unknown-unknown__stable_tools",
+              "exec_triple": "aarch64-apple-darwin",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-unknown-unknown",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_windows_x86_64__wasm32-unknown-unknown__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_x86_64__wasm32-unknown-unknown__stable_tools",
+              "exec_triple": "x86_64-pc-windows-msvc",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-unknown-unknown",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_linux_aarch64__wasm32-wasi__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_aarch64__wasm32-wasi__stable",
+              "toolchain": "@rust_linux_aarch64__wasm32-wasi__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:linux"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@platforms//os:wasi"
+              ]
+            }
+          },
+          "rust_darwin_aarch64": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_set_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_aarch64",
+              "toolchains": [
+                "@rust_darwin_aarch64__aarch64-apple-darwin__stable//:toolchain",
+                "@rust_darwin_aarch64__wasm32-unknown-unknown__stable//:toolchain",
+                "@rust_darwin_aarch64__wasm32-wasi__stable//:toolchain"
+              ]
+            }
+          },
+          "rust_darwin_x86_64__x86_64-apple-darwin__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_x86_64__x86_64-apple-darwin__stable",
+              "toolchain": "@rust_darwin_x86_64__x86_64-apple-darwin__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:osx"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:osx"
+              ]
+            }
+          },
+          "rust_linux_x86_64__wasm32-unknown-unknown__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_x86_64__wasm32-unknown-unknown__stable_tools",
+              "exec_triple": "x86_64-unknown-linux-gnu",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-unknown-unknown",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_freebsd_x86_64__wasm32-wasi__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_freebsd_x86_64__wasm32-wasi__stable_tools",
+              "exec_triple": "x86_64-unknown-freebsd",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-wasi",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_darwin_x86_64__wasm32-wasi__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_x86_64__wasm32-wasi__stable",
+              "toolchain": "@rust_darwin_x86_64__wasm32-wasi__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:osx"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@platforms//os:wasi"
+              ]
+            }
+          },
+          "rust_host_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_host_tools",
+              "exec_triple": "x86_64-unknown-linux-gnu",
+              "target_triple": "x86_64-unknown-linux-gnu",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "dev_components": false,
+              "edition": "2021",
+              "rustfmt_version": "nightly/2023-11-16",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "version": "1.74.0"
+            }
+          },
+          "rustfmt_nightly-2023-11-16__aarch64-apple-darwin_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rustfmt_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__aarch64-apple-darwin_tools",
+              "version": "nightly",
+              "iso_date": "2023-11-16",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {},
+              "exec_triple": "aarch64-apple-darwin"
+            }
+          },
+          "rust_freebsd_x86_64__wasm32-unknown-unknown__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_freebsd_x86_64__wasm32-unknown-unknown__stable",
+              "toolchain": "@rust_freebsd_x86_64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:freebsd"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@rules_rust//rust/platform/os:unknown"
+              ]
+            }
+          },
+          "rust_freebsd_x86_64": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_set_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_freebsd_x86_64",
+              "toolchains": [
+                "@rust_freebsd_x86_64__x86_64-unknown-freebsd__stable//:toolchain",
+                "@rust_freebsd_x86_64__wasm32-unknown-unknown__stable//:toolchain",
+                "@rust_freebsd_x86_64__wasm32-wasi__stable//:toolchain"
+              ]
+            }
+          },
+          "rust_linux_x86_64__wasm32-wasi__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_x86_64__wasm32-wasi__stable_tools",
+              "exec_triple": "x86_64-unknown-linux-gnu",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-wasi",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_windows_x86_64__wasm32-unknown-unknown__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_x86_64__wasm32-unknown-unknown__stable",
+              "toolchain": "@rust_windows_x86_64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:windows"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@rules_rust//rust/platform/os:unknown"
+              ]
+            }
+          },
+          "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_x86_64__x86_64-unknown-linux-gnu__stable",
+              "toolchain": "@rust_linux_x86_64__x86_64-unknown-linux-gnu__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:linux"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:linux"
+              ]
+            }
+          },
+          "rust_linux_x86_64": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_set_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_x86_64",
+              "toolchains": [
+                "@rust_linux_x86_64__x86_64-unknown-linux-gnu__stable//:toolchain",
+                "@rust_linux_x86_64__wasm32-unknown-unknown__stable//:toolchain",
+                "@rust_linux_x86_64__wasm32-wasi__stable//:toolchain"
+              ]
+            }
+          },
+          "rust_windows_x86_64__x86_64-pc-windows-msvc__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_x86_64__x86_64-pc-windows-msvc__stable",
+              "toolchain": "@rust_windows_x86_64__x86_64-pc-windows-msvc__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:windows"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:windows"
+              ]
+            }
+          },
+          "rustfmt_nightly-2023-11-16__aarch64-unknown-linux-gnu_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rustfmt_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__aarch64-unknown-linux-gnu_tools",
+              "version": "nightly",
+              "iso_date": "2023-11-16",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {},
+              "exec_triple": "aarch64-unknown-linux-gnu"
+            }
+          },
+          "rust_linux_x86_64__wasm32-wasi__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_x86_64__wasm32-wasi__stable",
+              "toolchain": "@rust_linux_x86_64__wasm32-wasi__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:linux"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@platforms//os:wasi"
+              ]
+            }
+          },
+          "rust_windows_aarch64__wasm32-unknown-unknown__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_aarch64__wasm32-unknown-unknown__stable_tools",
+              "exec_triple": "aarch64-pc-windows-msvc",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-unknown-unknown",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_darwin_aarch64__aarch64-apple-darwin__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_aarch64__aarch64-apple-darwin__stable_tools",
+              "exec_triple": "aarch64-apple-darwin",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "aarch64-apple-darwin",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rustfmt_nightly-2023-11-16__x86_64-unknown-freebsd_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rustfmt_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__x86_64-unknown-freebsd_tools",
+              "version": "nightly",
+              "iso_date": "2023-11-16",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {},
+              "exec_triple": "x86_64-unknown-freebsd"
+            }
+          },
+          "rust_linux_aarch64__wasm32-wasi__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_aarch64__wasm32-wasi__stable_tools",
+              "exec_triple": "aarch64-unknown-linux-gnu",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-wasi",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rustfmt_nightly-2023-11-16__x86_64-apple-darwin_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rustfmt_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__x86_64-apple-darwin_tools",
+              "version": "nightly",
+              "iso_date": "2023-11-16",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {},
+              "exec_triple": "x86_64-apple-darwin"
+            }
+          },
+          "rust_windows_aarch64__wasm32-unknown-unknown__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_aarch64__wasm32-unknown-unknown__stable",
+              "toolchain": "@rust_windows_aarch64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:windows"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@rules_rust//rust/platform/os:unknown"
+              ]
+            }
+          },
+          "rust_linux_aarch64": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_set_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_aarch64",
+              "toolchains": [
+                "@rust_linux_aarch64__aarch64-unknown-linux-gnu__stable//:toolchain",
+                "@rust_linux_aarch64__wasm32-unknown-unknown__stable//:toolchain",
+                "@rust_linux_aarch64__wasm32-wasi__stable//:toolchain"
+              ]
+            }
+          },
+          "rust_darwin_aarch64__wasm32-wasi__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_aarch64__wasm32-wasi__stable",
+              "toolchain": "@rust_darwin_aarch64__wasm32-wasi__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:osx"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:wasm32",
+                "@platforms//os:wasi"
+              ]
+            }
+          },
+          "rustfmt_nightly-2023-11-16__x86_64-pc-windows-msvc_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rustfmt_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__x86_64-pc-windows-msvc_tools",
+              "version": "nightly",
+              "iso_date": "2023-11-16",
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {},
+              "exec_triple": "x86_64-pc-windows-msvc"
+            }
+          },
+          "rustfmt_nightly-2023-11-16__aarch64-unknown-linux-gnu": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__aarch64-unknown-linux-gnu",
+              "toolchain": "@rustfmt_nightly-2023-11-16__aarch64-unknown-linux-gnu_tools//:rustfmt_toolchain",
+              "toolchain_type": "@rules_rust//rust/rustfmt:toolchain_type",
+              "target_settings": [],
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:linux"
+              ],
+              "target_compatible_with": []
+            }
+          },
+          "rustfmt_nightly-2023-11-16__x86_64-pc-windows-msvc": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__x86_64-pc-windows-msvc",
+              "toolchain": "@rustfmt_nightly-2023-11-16__x86_64-pc-windows-msvc_tools//:rustfmt_toolchain",
+              "toolchain_type": "@rules_rust//rust/rustfmt:toolchain_type",
+              "target_settings": [],
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:windows"
+              ],
+              "target_compatible_with": []
+            }
+          },
+          "rustfmt_nightly-2023-11-16__aarch64-pc-windows-msvc": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__aarch64-pc-windows-msvc",
+              "toolchain": "@rustfmt_nightly-2023-11-16__aarch64-pc-windows-msvc_tools//:rustfmt_toolchain",
+              "toolchain_type": "@rules_rust//rust/rustfmt:toolchain_type",
+              "target_settings": [],
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:windows"
+              ],
+              "target_compatible_with": []
+            }
+          },
+          "rust_windows_aarch64__aarch64-pc-windows-msvc__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_windows_aarch64__aarch64-pc-windows-msvc__stable",
+              "toolchain": "@rust_windows_aarch64__aarch64-pc-windows-msvc__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:windows"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:windows"
+              ]
+            }
+          },
+          "rustfmt_nightly-2023-11-16__aarch64-apple-darwin": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rustfmt_nightly-2023-11-16__aarch64-apple-darwin",
+              "toolchain": "@rustfmt_nightly-2023-11-16__aarch64-apple-darwin_tools//:rustfmt_toolchain",
+              "toolchain_type": "@rules_rust//rust/rustfmt:toolchain_type",
+              "target_settings": [],
+              "exec_compatible_with": [
+                "@platforms//cpu:aarch64",
+                "@platforms//os:osx"
+              ],
+              "target_compatible_with": []
+            }
+          },
+          "rust_freebsd_x86_64__x86_64-unknown-freebsd__stable": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_freebsd_x86_64__x86_64-unknown-freebsd__stable",
+              "toolchain": "@rust_freebsd_x86_64__x86_64-unknown-freebsd__stable_tools//:rust_toolchain",
+              "target_settings": [
+                "@rules_rust//rust/toolchain/channel:stable"
+              ],
+              "toolchain_type": "@rules_rust//rust:toolchain",
+              "exec_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:freebsd"
+              ],
+              "target_compatible_with": [
+                "@platforms//cpu:x86_64",
+                "@platforms//os:freebsd"
+              ]
+            }
+          },
+          "rust_toolchains": {
+            "bzlFile": "@@rules_rust~override//rust/private:repository_utils.bzl",
+            "ruleClassName": "toolchain_repository_hub",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_toolchains",
+              "toolchain_names": [
+                "rust_analyzer_1.74.0",
+                "rust_darwin_aarch64__aarch64-apple-darwin__stable",
+                "rust_darwin_aarch64__wasm32-unknown-unknown__stable",
+                "rust_darwin_aarch64__wasm32-wasi__stable",
+                "rust_windows_aarch64__aarch64-pc-windows-msvc__stable",
+                "rust_windows_aarch64__wasm32-unknown-unknown__stable",
+                "rust_windows_aarch64__wasm32-wasi__stable",
+                "rust_linux_aarch64__aarch64-unknown-linux-gnu__stable",
+                "rust_linux_aarch64__wasm32-unknown-unknown__stable",
+                "rust_linux_aarch64__wasm32-wasi__stable",
+                "rust_darwin_x86_64__x86_64-apple-darwin__stable",
+                "rust_darwin_x86_64__wasm32-unknown-unknown__stable",
+                "rust_darwin_x86_64__wasm32-wasi__stable",
+                "rust_windows_x86_64__x86_64-pc-windows-msvc__stable",
+                "rust_windows_x86_64__wasm32-unknown-unknown__stable",
+                "rust_windows_x86_64__wasm32-wasi__stable",
+                "rust_freebsd_x86_64__x86_64-unknown-freebsd__stable",
+                "rust_freebsd_x86_64__wasm32-unknown-unknown__stable",
+                "rust_freebsd_x86_64__wasm32-wasi__stable",
+                "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable",
+                "rust_linux_x86_64__wasm32-unknown-unknown__stable",
+                "rust_linux_x86_64__wasm32-wasi__stable"
+              ],
+              "toolchain_labels": {
+                "rust_analyzer_1.74.0": "@rust_analyzer_1.74.0_srcs//:rust_analyzer_toolchain",
+                "rust_darwin_aarch64__aarch64-apple-darwin__stable": "@rust_darwin_aarch64__aarch64-apple-darwin__stable_tools//:rust_toolchain",
+                "rust_darwin_aarch64__wasm32-unknown-unknown__stable": "@rust_darwin_aarch64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+                "rust_darwin_aarch64__wasm32-wasi__stable": "@rust_darwin_aarch64__wasm32-wasi__stable_tools//:rust_toolchain",
+                "rust_windows_aarch64__aarch64-pc-windows-msvc__stable": "@rust_windows_aarch64__aarch64-pc-windows-msvc__stable_tools//:rust_toolchain",
+                "rust_windows_aarch64__wasm32-unknown-unknown__stable": "@rust_windows_aarch64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+                "rust_windows_aarch64__wasm32-wasi__stable": "@rust_windows_aarch64__wasm32-wasi__stable_tools//:rust_toolchain",
+                "rust_linux_aarch64__aarch64-unknown-linux-gnu__stable": "@rust_linux_aarch64__aarch64-unknown-linux-gnu__stable_tools//:rust_toolchain",
+                "rust_linux_aarch64__wasm32-unknown-unknown__stable": "@rust_linux_aarch64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+                "rust_linux_aarch64__wasm32-wasi__stable": "@rust_linux_aarch64__wasm32-wasi__stable_tools//:rust_toolchain",
+                "rust_darwin_x86_64__x86_64-apple-darwin__stable": "@rust_darwin_x86_64__x86_64-apple-darwin__stable_tools//:rust_toolchain",
+                "rust_darwin_x86_64__wasm32-unknown-unknown__stable": "@rust_darwin_x86_64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+                "rust_darwin_x86_64__wasm32-wasi__stable": "@rust_darwin_x86_64__wasm32-wasi__stable_tools//:rust_toolchain",
+                "rust_windows_x86_64__x86_64-pc-windows-msvc__stable": "@rust_windows_x86_64__x86_64-pc-windows-msvc__stable_tools//:rust_toolchain",
+                "rust_windows_x86_64__wasm32-unknown-unknown__stable": "@rust_windows_x86_64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+                "rust_windows_x86_64__wasm32-wasi__stable": "@rust_windows_x86_64__wasm32-wasi__stable_tools//:rust_toolchain",
+                "rust_freebsd_x86_64__x86_64-unknown-freebsd__stable": "@rust_freebsd_x86_64__x86_64-unknown-freebsd__stable_tools//:rust_toolchain",
+                "rust_freebsd_x86_64__wasm32-unknown-unknown__stable": "@rust_freebsd_x86_64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+                "rust_freebsd_x86_64__wasm32-wasi__stable": "@rust_freebsd_x86_64__wasm32-wasi__stable_tools//:rust_toolchain",
+                "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable": "@rust_linux_x86_64__x86_64-unknown-linux-gnu__stable_tools//:rust_toolchain",
+                "rust_linux_x86_64__wasm32-unknown-unknown__stable": "@rust_linux_x86_64__wasm32-unknown-unknown__stable_tools//:rust_toolchain",
+                "rust_linux_x86_64__wasm32-wasi__stable": "@rust_linux_x86_64__wasm32-wasi__stable_tools//:rust_toolchain"
+              },
+              "toolchain_types": {
+                "rust_analyzer_1.74.0": "@rules_rust//rust/rust_analyzer:toolchain_type",
+                "rust_darwin_aarch64__aarch64-apple-darwin__stable": "@rules_rust//rust:toolchain",
+                "rust_darwin_aarch64__wasm32-unknown-unknown__stable": "@rules_rust//rust:toolchain",
+                "rust_darwin_aarch64__wasm32-wasi__stable": "@rules_rust//rust:toolchain",
+                "rust_windows_aarch64__aarch64-pc-windows-msvc__stable": "@rules_rust//rust:toolchain",
+                "rust_windows_aarch64__wasm32-unknown-unknown__stable": "@rules_rust//rust:toolchain",
+                "rust_windows_aarch64__wasm32-wasi__stable": "@rules_rust//rust:toolchain",
+                "rust_linux_aarch64__aarch64-unknown-linux-gnu__stable": "@rules_rust//rust:toolchain",
+                "rust_linux_aarch64__wasm32-unknown-unknown__stable": "@rules_rust//rust:toolchain",
+                "rust_linux_aarch64__wasm32-wasi__stable": "@rules_rust//rust:toolchain",
+                "rust_darwin_x86_64__x86_64-apple-darwin__stable": "@rules_rust//rust:toolchain",
+                "rust_darwin_x86_64__wasm32-unknown-unknown__stable": "@rules_rust//rust:toolchain",
+                "rust_darwin_x86_64__wasm32-wasi__stable": "@rules_rust//rust:toolchain",
+                "rust_windows_x86_64__x86_64-pc-windows-msvc__stable": "@rules_rust//rust:toolchain",
+                "rust_windows_x86_64__wasm32-unknown-unknown__stable": "@rules_rust//rust:toolchain",
+                "rust_windows_x86_64__wasm32-wasi__stable": "@rules_rust//rust:toolchain",
+                "rust_freebsd_x86_64__x86_64-unknown-freebsd__stable": "@rules_rust//rust:toolchain",
+                "rust_freebsd_x86_64__wasm32-unknown-unknown__stable": "@rules_rust//rust:toolchain",
+                "rust_freebsd_x86_64__wasm32-wasi__stable": "@rules_rust//rust:toolchain",
+                "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable": "@rules_rust//rust:toolchain",
+                "rust_linux_x86_64__wasm32-unknown-unknown__stable": "@rules_rust//rust:toolchain",
+                "rust_linux_x86_64__wasm32-wasi__stable": "@rules_rust//rust:toolchain"
+              },
+              "exec_compatible_with": {
+                "rust_analyzer_1.74.0": [],
+                "rust_darwin_aarch64__aarch64-apple-darwin__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:osx"
+                ],
+                "rust_darwin_aarch64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:osx"
+                ],
+                "rust_darwin_aarch64__wasm32-wasi__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:osx"
+                ],
+                "rust_windows_aarch64__aarch64-pc-windows-msvc__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:windows"
+                ],
+                "rust_windows_aarch64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:windows"
+                ],
+                "rust_windows_aarch64__wasm32-wasi__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:windows"
+                ],
+                "rust_linux_aarch64__aarch64-unknown-linux-gnu__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:linux"
+                ],
+                "rust_linux_aarch64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:linux"
+                ],
+                "rust_linux_aarch64__wasm32-wasi__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:linux"
+                ],
+                "rust_darwin_x86_64__x86_64-apple-darwin__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:osx"
+                ],
+                "rust_darwin_x86_64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:osx"
+                ],
+                "rust_darwin_x86_64__wasm32-wasi__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:osx"
+                ],
+                "rust_windows_x86_64__x86_64-pc-windows-msvc__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:windows"
+                ],
+                "rust_windows_x86_64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:windows"
+                ],
+                "rust_windows_x86_64__wasm32-wasi__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:windows"
+                ],
+                "rust_freebsd_x86_64__x86_64-unknown-freebsd__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:freebsd"
+                ],
+                "rust_freebsd_x86_64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:freebsd"
+                ],
+                "rust_freebsd_x86_64__wasm32-wasi__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:freebsd"
+                ],
+                "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:linux"
+                ],
+                "rust_linux_x86_64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:linux"
+                ],
+                "rust_linux_x86_64__wasm32-wasi__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:linux"
+                ]
+              },
+              "target_compatible_with": {
+                "rust_analyzer_1.74.0": [],
+                "rust_darwin_aarch64__aarch64-apple-darwin__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:osx"
+                ],
+                "rust_darwin_aarch64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@rules_rust//rust/platform/os:unknown"
+                ],
+                "rust_darwin_aarch64__wasm32-wasi__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@platforms//os:wasi"
+                ],
+                "rust_windows_aarch64__aarch64-pc-windows-msvc__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:windows"
+                ],
+                "rust_windows_aarch64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@rules_rust//rust/platform/os:unknown"
+                ],
+                "rust_windows_aarch64__wasm32-wasi__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@platforms//os:wasi"
+                ],
+                "rust_linux_aarch64__aarch64-unknown-linux-gnu__stable": [
+                  "@platforms//cpu:aarch64",
+                  "@platforms//os:linux"
+                ],
+                "rust_linux_aarch64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@rules_rust//rust/platform/os:unknown"
+                ],
+                "rust_linux_aarch64__wasm32-wasi__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@platforms//os:wasi"
+                ],
+                "rust_darwin_x86_64__x86_64-apple-darwin__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:osx"
+                ],
+                "rust_darwin_x86_64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@rules_rust//rust/platform/os:unknown"
+                ],
+                "rust_darwin_x86_64__wasm32-wasi__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@platforms//os:wasi"
+                ],
+                "rust_windows_x86_64__x86_64-pc-windows-msvc__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:windows"
+                ],
+                "rust_windows_x86_64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@rules_rust//rust/platform/os:unknown"
+                ],
+                "rust_windows_x86_64__wasm32-wasi__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@platforms//os:wasi"
+                ],
+                "rust_freebsd_x86_64__x86_64-unknown-freebsd__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:freebsd"
+                ],
+                "rust_freebsd_x86_64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@rules_rust//rust/platform/os:unknown"
+                ],
+                "rust_freebsd_x86_64__wasm32-wasi__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@platforms//os:wasi"
+                ],
+                "rust_linux_x86_64__x86_64-unknown-linux-gnu__stable": [
+                  "@platforms//cpu:x86_64",
+                  "@platforms//os:linux"
+                ],
+                "rust_linux_x86_64__wasm32-unknown-unknown__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@rules_rust//rust/platform/os:unknown"
+                ],
+                "rust_linux_x86_64__wasm32-wasi__stable": [
+                  "@platforms//cpu:wasm32",
+                  "@platforms//os:wasi"
+                ]
+              }
+            }
+          },
+          "rust_analyzer_1.74.0": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "toolchain_repository_proxy",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_analyzer_1.74.0",
+              "toolchain": "@rust_analyzer_1.74.0_tools//:rust_analyzer_toolchain",
+              "toolchain_type": "@rules_rust//rust/rust_analyzer:toolchain_type",
+              "exec_compatible_with": [],
+              "target_compatible_with": []
+            }
+          },
+          "rust_linux_aarch64__wasm32-unknown-unknown__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_linux_aarch64__wasm32-unknown-unknown__stable_tools",
+              "exec_triple": "aarch64-unknown-linux-gnu",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "wasm32-unknown-unknown",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          },
+          "rust_darwin_x86_64__x86_64-apple-darwin__stable_tools": {
+            "bzlFile": "@@rules_rust~override//rust:repositories.bzl",
+            "ruleClassName": "rust_toolchain_tools_repository",
+            "attributes": {
+              "name": "rules_rust~override~rust~rust_darwin_x86_64__x86_64-apple-darwin__stable_tools",
+              "exec_triple": "x86_64-apple-darwin",
+              "allocator_library": "@rules_rust//ffi/cc/allocator_library",
+              "global_allocator_library": "@rules_rust//ffi/cc/global_allocator_library",
+              "target_triple": "x86_64-apple-darwin",
+              "iso_date": "",
+              "version": "1.74.0",
+              "rustfmt_version": "nightly/2023-11-16",
+              "edition": "2021",
+              "dev_components": false,
+              "extra_rustc_flags": [],
+              "extra_exec_rustc_flags": [],
+              "opt_level": {},
+              "sha256s": {},
+              "urls": [
+                "https://static.rust-lang.org/dist/{}.tar.gz"
+              ],
+              "auth": {}
+            }
+          }
+        }
+      }
+    },
+    "@@rules_rust~override//rust/private:extensions.bzl%internal_deps": {
+      "general": {
+        "bzlTransitiveDigest": "4KMPLPq6YWJb2UZGBrMO45NEX9HphCpBQ35/C4utjog=",
+        "accumulatedFileDigests": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "rules_rust_tinyjson": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "name": "rules_rust~override~internal_deps~rules_rust_tinyjson",
+              "sha256": "9ab95735ea2c8fd51154d01e39cf13912a78071c2d89abc49a7ef102a7dd725a",
+              "url": "https://crates.io/api/v1/crates/tinyjson/2.5.1/download",
+              "strip_prefix": "tinyjson-2.5.1",
+              "type": "tar.gz",
+              "build_file": "@@rules_rust~override//util/process_wrapper:BUILD.tinyjson.bazel"
             }
           }
         }
