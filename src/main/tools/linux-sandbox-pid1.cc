@@ -296,14 +296,14 @@ static void MountFilesystems() {
   std::unordered_set<std::string> bind_mount_sources;
 
   for (size_t i = 0; i < opt.bind_mount_sources.size(); i++) {
-    const std::string &source = opt.bind_mount_sources.at(i);
+    const char* source = opt.bind_mount_sources.at(i);
     bind_mount_sources.insert(source);
-    const std::string &target = opt.bind_mount_targets.at(i);
-    PRINT_DEBUG("bind mount: %s -> %s", source.c_str(), target.c_str());
-    if (mount(source.c_str(), target.c_str(), nullptr, MS_BIND | MS_REC,
+    const char* target = opt.bind_mount_targets.at(i);
+    PRINT_DEBUG("bind mount: %s -> %s", source, target);
+    if (mount(source, target, nullptr, MS_BIND | MS_REC,
               nullptr) < 0) {
-      DIE("mount(%s, %s, nullptr, MS_BIND | MS_REC, nullptr)", source.c_str(),
-          target.c_str());
+      DIE("mount(%s, %s, nullptr, MS_BIND | MS_REC, nullptr)", source,
+          target);
     }
   }
 
@@ -647,26 +647,24 @@ static void MountAllMounts() {
   }
   for (int i = 0; i < (signed)opt.bind_mount_sources.size(); i++) {
     if (global_debug) {
-      if (strcmp(opt.bind_mount_sources[i].c_str(),
-                 opt.bind_mount_targets[i].c_str()) == 0) {
+      if (strcmp(opt.bind_mount_sources[i],
+                 opt.bind_mount_targets[i]) == 0) {
         // The file is mounted to the same path inside the sandbox, as outside
         // (e.g. /home/user -> <sandbox>/home/user), so we'll just show a
         // simplified version of the mount command.
-        PRINT_DEBUG("mount: %s\n", opt.bind_mount_sources[i].c_str());
+        PRINT_DEBUG("mount: %s\n", opt.bind_mount_sources[i]);
       } else {
         // The file is mounted to a custom location inside the sandbox.
         // Create a user-friendly string for the sandboxed path and show it.
-        const std::string user_friendly_mount_target("<sandbox>" +
-                                                     opt.bind_mount_targets[i]);
-        PRINT_DEBUG("mount: %s -> %s\n", opt.bind_mount_sources[i].c_str(),
-                    user_friendly_mount_target.c_str());
+        PRINT_DEBUG("mount: %s -> <sandbox>%s\n", opt.bind_mount_sources[i],
+                    opt.bind_mount_targets[i]);
       }
     }
     const std::string full_sandbox_path(opt.sandbox_root +
                                         opt.bind_mount_targets[i]);
 
     struct stat sb;
-    if (stat(opt.bind_mount_sources[i].c_str(), &sb) < 0) {
+    if (stat(opt.bind_mount_sources[i], &sb) < 0) {
       DIE("stat");
     }
     bool IsDirectory = S_ISDIR(sb.st_mode);
