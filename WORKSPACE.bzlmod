@@ -58,3 +58,33 @@ local_repository(
     name = "kythe_release",
     path = "/usr/local/kythe",
 )
+
+# TODO: would like to have this be handled by `MODULE.bazel`; see this PR:
+# https://github.com/bazelbuild/rules_rust/pull/1910
+#
+# Note: this requires accessing the toolchain repos at repo fetch time; we've
+# `use_repo`'d the x86_64 toolchain repo in MODULE.bazel to accomodate this...
+load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository")
+crates_repository(
+    name = "crate_index",
+    cargo_lockfile = "//:Cargo.lock",
+    lockfile = "//:cargo-bazel-lock.json",
+
+    # stopgap; not using an official release:
+    #
+    # we could use `cargo_bazel_bootstrap` but we don't want to (it's slower)
+    generator_urls = {
+        "x86_64-unknown-linux-gnu": "https://github.com/bazelbuild/rules_rust/releases/download/0.27.0/cargo-bazel-x86_64-unknown-linux-gnu",
+    },
+    generator_sha256s = {
+        "x86_64-unknown-linux-gnu": "76cd8f797b42ac8297f903d2d0165d0cb0072e08c10fa9c0ac49593ef66d516e",
+    },
+
+    packages = dict(
+        nix = crate.spec(version = "0.27", features = ["time"]),
+        libc = crate.spec(version = "0.2"),
+    ),
+)
+
+load("@crate_index//:defs.bzl", "crate_repositories")
+crate_repositories()
