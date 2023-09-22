@@ -14,7 +14,7 @@
   },
   "localOverrideHashes": {
     "remoteapis": "038a6397cee38ebe0df6f97a69049b7695044449f73b7721ae5e970e05828175",
-    "bazel_tools": "11c49407fdc54b48d69dcd4478440118124b9cd51b2dca5947a6414a585964a1",
+    "bazel_tools": "18604caebef40f8f8559f8029260c4a30fd0f036a4a0a2017ec64e33d3286218",
     "googleapis": "2f11ff6746ba50aea110cc24a56afd91d138b55052991176fdc30034b0dbfa38"
   },
   "moduleDepGraph": {
@@ -548,7 +548,8 @@
         "rules_python": "rules_python@0.24.0",
         "platforms": "platforms@0.0.7",
         "com_google_protobuf": "protobuf@21.7",
-        "zlib": "zlib@1.3"
+        "zlib": "zlib@1.3",
+        "build_bazel_apple_support": "apple_support@1.5.0"
       }
     },
     "local_config_platform@_": {
@@ -1620,7 +1621,7 @@
       }
     },
     "//:extensions.bzl%bazel_build_deps": {
-      "bzlTransitiveDigest": "FCtEgtjK+rMHZMXbyej9dhG0RvpD0HUT48VU5091rBo=",
+      "bzlTransitiveDigest": "zK5ZUXfdwuf8dXPVQ9tNuNbqSdKfVMKH9p1d4FdEWoM=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -1692,7 +1693,7 @@
       }
     },
     "//:extensions.bzl%bazel_test_deps": {
-      "bzlTransitiveDigest": "FCtEgtjK+rMHZMXbyej9dhG0RvpD0HUT48VU5091rBo=",
+      "bzlTransitiveDigest": "zK5ZUXfdwuf8dXPVQ9tNuNbqSdKfVMKH9p1d4FdEWoM=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -1755,7 +1756,7 @@
       }
     },
     "@apple_support~1.5.0//crosstool:setup.bzl%apple_cc_configure_extension": {
-      "bzlTransitiveDigest": "Vt3R6Ld6a/qQsh16CalY7fKu0TSI/lxiLVy5DYTtQVQ=",
+      "bzlTransitiveDigest": "cuVzPcdbR6fUl2ia9GjJe7HBTVrChRKl4TR/mJaM8Ek=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -1789,7 +1790,7 @@
       }
     },
     "@bazel_tools//tools/cpp:cc_configure.bzl%cc_configure_extension": {
-      "bzlTransitiveDigest": "fX+NTqVY9jebrhWZSjm+R2r4sMbV1U3pvP90DKmouSg=",
+      "bzlTransitiveDigest": "fot7cUiSFoPEjkJyYIXGnqfDaHHIm9AHTtrC5+FcLio=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -1806,7 +1807,7 @@
       }
     },
     "@bazel_tools//tools/osx:xcode_configure.bzl%xcode_configure_extension": {
-      "bzlTransitiveDigest": "OmamqKJsiE8WH/LST0ioVROxC7R/MdakCNW9DSPS5/U=",
+      "bzlTransitiveDigest": "nr+7RQdBKy+vbv8CZBZ2fN6sDviz3GovjZnFZSmMeYE=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -1966,7 +1967,7 @@
       }
     },
     "@grpc~1.48.1.bcr.1//bazel:grpc_deps.bzl%grpc_repo_deps_ext": {
-      "bzlTransitiveDigest": "S5rdtWt3QVZgX2cP/Ot1NLUmlqgtcoz1cPNksEQYtFQ=",
+      "bzlTransitiveDigest": "2rnT57eezq0FiKbqL6yWAVEZhB+/Id1q9Zv7OVgjAzg=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -2083,7 +2084,7 @@
       }
     },
     "@grpc~1.48.1.bcr.1//bazel:grpc_extra_deps.bzl%grpc_extra_deps_ext": {
-      "bzlTransitiveDigest": "ALqwntEqKRNf03LlwK9t4Oh/flVzCF6ZWFL9xTX69uI=",
+      "bzlTransitiveDigest": "IIWofAu4HfEoKZET8+tZWEXIFgejQorfFr4RdPRUrX8=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -2095,7 +2096,7 @@
       }
     },
     "@rules_cc~0.0.8//cc:extensions.bzl%cc_configure": {
-      "bzlTransitiveDigest": "VKMuk3c8UzzPCfNMffIZahPRypRs3RxaBtETOTI5fJg=",
+      "bzlTransitiveDigest": "vbmanGWm78n1xDASxvoeShne52hqjvDgeMpJz1MazVs=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -2117,7 +2118,7 @@
       }
     },
     "@rules_go~0.39.1//go:extensions.bzl%go_sdk": {
-      "bzlTransitiveDigest": "baCc5Mc6nJAIoj3TovuW1bOINXCqP/9lOv0UCbAkhsk=",
+      "bzlTransitiveDigest": "LqIA/gSoMku4BpIjOTYmrl6bigoJ6EtjY7XNkueXBeY=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -2206,7 +2207,7 @@
       }
     },
     "@rules_java~6.3.0//java:extensions.bzl%toolchains": {
-      "bzlTransitiveDigest": "0YRjmxReOHnmadP3sbuSfgBb42q6pVhXk+4V1QIxNlM=",
+      "bzlTransitiveDigest": "fSKNXTrA8V/OgyHwPgR/GsWX6LwGEYZxS1nz3EiAUwE=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
@@ -2452,191 +2453,8 @@
         }
       }
     },
-    "@rules_python~0.24.0//python/extensions:pip.bzl%pip": {
-      "bzlTransitiveDigest": "TEllPVzarB4s4TpELB3gWHqo8xpekIiVpXI5FLmg+CQ=",
-      "accumulatedFileDigests": {
-        "@@//:requirements.txt": "ff12967a755bb8e9b4c92524f6471a99e14c30474a3d428547c55745ec8f23a0"
-      },
-      "envVariables": {},
-      "generatedRepoSpecs": {
-        "bazel_pip_dev_deps": {
-          "bzlFile": "@@rules_python~0.24.0//python/pip_install:pip_repository.bzl",
-          "ruleClassName": "pip_hub_repository_bzlmod",
-          "attributes": {"name":"--rules_python~0.24.0~pip~bazel_pip_dev_deps","repo_name":"--bazel_pip_dev_deps","whl_library_alias_names":["--bazel_runfiles"]}
-        },
-        "bazel_pip_dev_deps_38": {
-          "bzlFile": "@@rules_python~0.24.0//python/pip_install:pip_repository.bzl",
-          "ruleClassName": "pip_repository_bzlmod",
-          "attributes": {"name":"--rules_python~0.24.0~pip~bazel_pip_dev_deps_38","repo_name":"--bazel_pip_dev_deps_38","requirements_lock":"@@//:requirements.txt"}
-        },
-        "bazel_pip_dev_deps_38_bazel_runfiles": {
-          "bzlFile": "@@rules_python~0.24.0//python/pip_install:pip_repository.bzl",
-          "ruleClassName": "whl_library",
-          "attributes": {"name":"--rules_python~0.24.0~pip~bazel_pip_dev_deps_38_bazel_runfiles","requirement":"--bazel-runfiles==0.24.0","repo":"--bazel_pip_dev_deps_38","repo_prefix":"--bazel_pip_dev_deps_38_","annotation":null,"python_interpreter":"--","python_interpreter_target":"@@rules_python~0.24.0~python~python_3_8_aarch64-apple-darwin//:bin/python3","quiet":true,"timeout":600,"isolated":true,"extra_pip_args":[],"download_only":false,"pip_data_exclude":[],"enable_implicit_namespace_pkgs":false,"environment":{}}
-        },
-        "bazel_pip_dev_deps_bazel_runfiles": {
-          "bzlFile": "@@rules_python~0.24.0//python:pip.bzl",
-          "ruleClassName": "whl_library_alias",
-          "attributes": {"name":"--rules_python~0.24.0~pip~bazel_pip_dev_deps_bazel_runfiles","wheel_name":"--bazel_runfiles","default_version":"--3.8","version_map":{"--3.8":"--bazel_pip_dev_deps_38_"}}
-        }
-      }
-    },
-    "@rules_python~0.24.0//python/extensions:python.bzl%python": {
-      "bzlTransitiveDigest": "9sVLcm29C6eY7TfBei6hgV2sqrC2SqgOPeB3aEjaPfU=",
-      "accumulatedFileDigests": {},
-      "envVariables": {},
-      "generatedRepoSpecs": {
-        "python_3_8_aarch64-apple-darwin": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_aarch64-apple-darwin","sha256":"--1e0a92d1a4f5e6d4a99f86b1cbf9773d703fe7fd032590f3e9c285c7a5eeb00a","patches":[],"platform":"--aarch64-apple-darwin","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-aarch64-apple-darwin-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-aarch64-apple-darwin-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "python_3_11_aarch64-unknown-linux-gnu": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_aarch64-unknown-linux-gnu","sha256":"--debf15783bdcb5530504f533d33fda75a7b905cec5361ae8f33da5ba6599f8b4","patches":[],"platform":"--aarch64-unknown-linux-gnu","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-aarch64-unknown-linux-gnu-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-aarch64-unknown-linux-gnu-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "python_3_11_aarch64-apple-darwin": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_aarch64-apple-darwin","sha256":"--4918cdf1cab742a90f85318f88b8122aeaa2d04705803c7b6e78e81a3dd40f80","patches":[],"platform":"--aarch64-apple-darwin","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-aarch64-apple-darwin-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-aarch64-apple-darwin-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "pythons_hub": {
-          "bzlFile": "@@rules_python~0.24.0//python/extensions/private:pythons_hub.bzl",
-          "ruleClassName": "hub_repo",
-          "attributes": {"name":"--rules_python~0.24.0~python~pythons_hub","default_python_version":"--3.8","toolchain_prefixes":["--_0000_python_3_11_","--_0001_python_3_8_"],"toolchain_python_versions":["--3.11","--3.8"],"toolchain_set_python_version_constraints":["--True","--False"],"toolchain_user_repository_names":["--python_3_11","--python_3_8"]}
-        },
-        "python_3_8_aarch64-unknown-linux-gnu": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_aarch64-unknown-linux-gnu","sha256":"--886ab33ced13c84bf59ce8ff79eba6448365bfcafea1bf415bd1d75e21b690aa","patches":[],"platform":"--aarch64-unknown-linux-gnu","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-aarch64-unknown-linux-gnu-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-aarch64-unknown-linux-gnu-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "python_3_8": {
-          "bzlFile": "@@rules_python~0.24.0//python/private:toolchains_repo.bzl",
-          "ruleClassName": "toolchain_aliases",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8","python_version":"--3.8.15","user_repository_name":"--python_3_8"}
-        },
-        "python_3_11_x86_64-pc-windows-msvc": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_x86_64-pc-windows-msvc","sha256":"--edc08979cb0666a597466176511529c049a6f0bba8adf70df441708f766de5bf","patches":[],"platform":"--x86_64-pc-windows-msvc","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-x86_64-pc-windows-msvc-shared-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-x86_64-pc-windows-msvc-shared-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "python_3_8_x86_64-apple-darwin": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_x86_64-apple-darwin","sha256":"--70b57f28c2b5e1e3dd89f0d30edd5bc414e8b20195766cf328e1b26bed7890e1","patches":[],"platform":"--x86_64-apple-darwin","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-x86_64-apple-darwin-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-x86_64-apple-darwin-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "python_3_8_x86_64-pc-windows-msvc": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_x86_64-pc-windows-msvc","sha256":"--2fdc3fa1c95f982179bbbaedae2b328197658638799b6dcb63f9f494b0de59e2","patches":[],"platform":"--x86_64-pc-windows-msvc","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-x86_64-pc-windows-msvc-shared-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-x86_64-pc-windows-msvc-shared-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "python_3_11": {
-          "bzlFile": "@@rules_python~0.24.0//python/private:toolchains_repo.bzl",
-          "ruleClassName": "toolchain_aliases",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11","python_version":"--3.11.1","user_repository_name":"--python_3_11"}
-        },
-        "python_3_11_x86_64-apple-darwin": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_x86_64-apple-darwin","sha256":"--20a4203d069dc9b710f70b09e7da2ce6f473d6b1110f9535fb6f4c469ed54733","patches":[],"platform":"--x86_64-apple-darwin","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-x86_64-apple-darwin-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-x86_64-apple-darwin-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "python_versions": {
-          "bzlFile": "@@rules_python~0.24.0//python/private:toolchains_repo.bzl",
-          "ruleClassName": "multi_toolchain_aliases",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_versions","python_versions":{"--3.8":"--python_3_8","--3.11":"--python_3_11"}}
-        },
-        "python_3_8_x86_64-unknown-linux-gnu": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_x86_64-unknown-linux-gnu","sha256":"--e47edfb2ceaf43fc699e20c179ec428b6f3e497cf8e2dcd8e9c936d4b96b1e56","patches":[],"platform":"--x86_64-unknown-linux-gnu","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-x86_64-unknown-linux-gnu-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-x86_64-unknown-linux-gnu-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        },
-        "python_3_11_x86_64-unknown-linux-gnu": {
-          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
-          "ruleClassName": "python_repository",
-          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_x86_64-unknown-linux-gnu","sha256":"--02a551fefab3750effd0e156c25446547c238688a32fabde2995c941c03a6423","patches":[],"platform":"--x86_64-unknown-linux-gnu","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-x86_64-unknown-linux-gnu-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-x86_64-unknown-linux-gnu-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
-        }
-      }
-    },
-    "@rules_python~0.24.0//python/extensions/private:internal_deps.bzl%internal_deps": {
-      "bzlTransitiveDigest": "d0GVFr68Y+3LHnWTnpXEqHou3XKRA+BYjeOeYY1wb2k=",
-      "accumulatedFileDigests": {},
-      "envVariables": {},
-      "generatedRepoSpecs": {
-        "pypi__wheel": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__wheel","url":"--https://files.pythonhosted.org/packages/bd/7c/d38a0b30ce22fc26ed7dbc087c6d00851fb3395e9d0dac40bec1f905030c/wheel-0.38.4-py3-none-any.whl","sha256":"--b60533f3f5d530e971d6737ca6d58681ee434818fab630c83a734bb10c083ce8","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__click": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__click","url":"--https://files.pythonhosted.org/packages/76/0a/b6c5f311e32aeb3b406e03c079ade51e905ea630fc19d1262a46249c1c86/click-8.0.1-py3-none-any.whl","sha256":"--fba402a4a47334742d782209a7c79bc448911afe1149d07bdabdf480b3e2f4b6","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__importlib_metadata": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__importlib_metadata","url":"--https://files.pythonhosted.org/packages/d7/31/74dcb59a601b95fce3b0334e8fc9db758f78e43075f22aeb3677dfb19f4c/importlib_metadata-1.4.0-py2.py3-none-any.whl","sha256":"--bdd9b7c397c273bcc9a11d6629a38487cd07154fa255a467bf704cd2c258e359","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__pep517": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__pep517","url":"--https://files.pythonhosted.org/packages/ee/2f/ef63e64e9429111e73d3d6cbee80591672d16f2725e648ebc52096f3d323/pep517-0.13.0-py3-none-any.whl","sha256":"--4ba4446d80aed5b5eac6509ade100bff3e7943a8489de249654a5ae9b33ee35b","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__packaging": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__packaging","url":"--https://files.pythonhosted.org/packages/8f/7b/42582927d281d7cb035609cd3a543ffac89b74f3f4ee8e1c50914bcb57eb/packaging-22.0-py3-none-any.whl","sha256":"--957e2148ba0e1a3b282772e791ef1d8083648bc131c8ab0c1feba110ce1146c3","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__pip_tools": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__pip_tools","url":"--https://files.pythonhosted.org/packages/5e/e8/f6d7d1847c7351048da870417724ace5c4506e816b38db02f4d7c675c189/pip_tools-6.12.1-py3-none-any.whl","sha256":"--f0c0c0ec57b58250afce458e2e6058b1f30a4263db895b7d72fd6311bf1dc6f7","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__setuptools": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__setuptools","url":"--https://files.pythonhosted.org/packages/7c/5b/3d92b9f0f7ca1645cba48c080b54fe7d8b1033a4e5720091d1631c4266db/setuptools-60.10.0-py3-none-any.whl","sha256":"--782ef48d58982ddb49920c11a0c5c9c0b02e7d7d1c2ad0aa44e1a1e133051c96","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__zipp": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__zipp","url":"--https://files.pythonhosted.org/packages/f4/50/cc72c5bcd48f6e98219fc4a88a5227e9e28b81637a99c49feba1d51f4d50/zipp-1.0.0-py2.py3-none-any.whl","sha256":"--8dda78f06bd1674bd8720df8a50bb47b6e1233c503a4eed8e7810686bde37656","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__colorama": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__colorama","url":"--https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl","sha256":"--4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__build": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__build","url":"--https://files.pythonhosted.org/packages/03/97/f58c723ff036a8d8b4d3115377c0a37ed05c1f68dd9a0d66dab5e82c5c1c/build-0.9.0-py3-none-any.whl","sha256":"--38a7a2b7a0bdc61a42a0a67509d88c71ecfc37b393baba770fae34e20929ff69","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__pip": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__pip","url":"--https://files.pythonhosted.org/packages/09/bd/2410905c76ee14c62baf69e3f4aa780226c1bbfc9485731ad018e35b0cb5/pip-22.3.1-py3-none-any.whl","sha256":"--908c78e6bc29b676ede1c4d57981d490cb892eb45cd8c214ab6298125119e077","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__installer": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__installer","url":"--https://files.pythonhosted.org/packages/e5/ca/1172b6638d52f2d6caa2dd262ec4c811ba59eee96d54a7701930726bce18/installer-0.7.0-py3-none-any.whl","sha256":"--05d1933f0a5ba7d8d6296bb6d5018e7c94fa473ceb10cf198a92ccea19c27b53","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__more_itertools": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__more_itertools","url":"--https://files.pythonhosted.org/packages/bd/3f/c4b3dbd315e248f84c388bd4a72b131a29f123ecacc37ffb2b3834546e42/more_itertools-8.13.0-py3-none-any.whl","sha256":"--c5122bffc5f104d37c1626b8615b511f3427aa5389b94d61e5ef8236bfbc3ddb","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        },
-        "pypi__tomli": {
-          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
-          "ruleClassName": "http_archive",
-          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__tomli","url":"--https://files.pythonhosted.org/packages/97/75/10a9ebee3fd790d20926a90a2547f0bf78f371b2f13aa822c759680ca7b9/tomli-2.0.1-py3-none-any.whl","sha256":"--939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
-        }
-      }
-    },
     "@rules_jvm_external~5.2//:extensions.bzl%maven": {
-      "bzlTransitiveDigest": "WAWsskOl4eHIskcL0TuHZGIMjV8sMJaAbAo2luMqofo=",
+      "bzlTransitiveDigest": "zclLx4qIuNJqEZk6TZaEfzcs120WPM0FwxE6RuEYFV4=",
       "accumulatedFileDigests": {
         "@@//:maven_install.json": "294105af77580ce681784a7d9113b157f70ef7c01c6aacf2d129bf1b5543c513",
         "@@rules_jvm_external~5.2//:rules_jvm_external_deps_install.json": "3ab1f67b0de4815df110bc72ccd6c77882b3b21d3d1e0a84445847b6ce3235a3",
@@ -3985,6 +3803,189 @@
           "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
           "ruleClassName": "http_archive",
           "attributes": {"name":"--rules_jvm_external~5.2~non_module_deps~io_bazel_rules_kotlin","sha256":"--946747acdbeae799b085d12b240ec346f775ac65236dfcf18aa0cd7300f6de78","urls":["--https://github.com/bazelbuild/rules_kotlin/releases/download/v1.7.0-RC-2/rules_kotlin_release.tgz"]}
+        }
+      }
+    },
+    "@rules_python~0.24.0//python/extensions:pip.bzl%pip": {
+      "bzlTransitiveDigest": "TEllPVzarB4s4TpELB3gWHqo8xpekIiVpXI5FLmg+CQ=",
+      "accumulatedFileDigests": {
+        "@@//:requirements.txt": "ff12967a755bb8e9b4c92524f6471a99e14c30474a3d428547c55745ec8f23a0"
+      },
+      "envVariables": {},
+      "generatedRepoSpecs": {
+        "bazel_pip_dev_deps": {
+          "bzlFile": "@@rules_python~0.24.0//python/pip_install:pip_repository.bzl",
+          "ruleClassName": "pip_hub_repository_bzlmod",
+          "attributes": {"name":"--rules_python~0.24.0~pip~bazel_pip_dev_deps","repo_name":"--bazel_pip_dev_deps","whl_library_alias_names":["--bazel_runfiles"]}
+        },
+        "bazel_pip_dev_deps_38": {
+          "bzlFile": "@@rules_python~0.24.0//python/pip_install:pip_repository.bzl",
+          "ruleClassName": "pip_repository_bzlmod",
+          "attributes": {"name":"--rules_python~0.24.0~pip~bazel_pip_dev_deps_38","repo_name":"--bazel_pip_dev_deps_38","requirements_lock":"@@//:requirements.txt"}
+        },
+        "bazel_pip_dev_deps_38_bazel_runfiles": {
+          "bzlFile": "@@rules_python~0.24.0//python/pip_install:pip_repository.bzl",
+          "ruleClassName": "whl_library",
+          "attributes": {"name":"--rules_python~0.24.0~pip~bazel_pip_dev_deps_38_bazel_runfiles","requirement":"--bazel-runfiles==0.24.0","repo":"--bazel_pip_dev_deps_38","repo_prefix":"--bazel_pip_dev_deps_38_","annotation":null,"python_interpreter":"--","python_interpreter_target":"@@rules_python~0.24.0~python~python_3_8_aarch64-apple-darwin//:bin/python3","quiet":true,"timeout":600,"isolated":true,"extra_pip_args":[],"download_only":false,"pip_data_exclude":[],"enable_implicit_namespace_pkgs":false,"environment":{}}
+        },
+        "bazel_pip_dev_deps_bazel_runfiles": {
+          "bzlFile": "@@rules_python~0.24.0//python:pip.bzl",
+          "ruleClassName": "whl_library_alias",
+          "attributes": {"name":"--rules_python~0.24.0~pip~bazel_pip_dev_deps_bazel_runfiles","wheel_name":"--bazel_runfiles","default_version":"--3.8","version_map":{"--3.8":"--bazel_pip_dev_deps_38_"}}
+        }
+      }
+    },
+    "@rules_python~0.24.0//python/extensions:python.bzl%python": {
+      "bzlTransitiveDigest": "UuboDXLbu/VRn/hyGog6JkAHESG86wGsrBJF53dv/TY=",
+      "accumulatedFileDigests": {},
+      "envVariables": {},
+      "generatedRepoSpecs": {
+        "python_3_8_aarch64-apple-darwin": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_aarch64-apple-darwin","sha256":"--1e0a92d1a4f5e6d4a99f86b1cbf9773d703fe7fd032590f3e9c285c7a5eeb00a","patches":[],"platform":"--aarch64-apple-darwin","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-aarch64-apple-darwin-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-aarch64-apple-darwin-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "python_3_11_aarch64-unknown-linux-gnu": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_aarch64-unknown-linux-gnu","sha256":"--debf15783bdcb5530504f533d33fda75a7b905cec5361ae8f33da5ba6599f8b4","patches":[],"platform":"--aarch64-unknown-linux-gnu","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-aarch64-unknown-linux-gnu-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-aarch64-unknown-linux-gnu-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "python_3_11_aarch64-apple-darwin": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_aarch64-apple-darwin","sha256":"--4918cdf1cab742a90f85318f88b8122aeaa2d04705803c7b6e78e81a3dd40f80","patches":[],"platform":"--aarch64-apple-darwin","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-aarch64-apple-darwin-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-aarch64-apple-darwin-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "pythons_hub": {
+          "bzlFile": "@@rules_python~0.24.0//python/extensions/private:pythons_hub.bzl",
+          "ruleClassName": "hub_repo",
+          "attributes": {"name":"--rules_python~0.24.0~python~pythons_hub","default_python_version":"--3.8","toolchain_prefixes":["--_0000_python_3_11_","--_0001_python_3_8_"],"toolchain_python_versions":["--3.11","--3.8"],"toolchain_set_python_version_constraints":["--True","--False"],"toolchain_user_repository_names":["--python_3_11","--python_3_8"]}
+        },
+        "python_3_8_aarch64-unknown-linux-gnu": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_aarch64-unknown-linux-gnu","sha256":"--886ab33ced13c84bf59ce8ff79eba6448365bfcafea1bf415bd1d75e21b690aa","patches":[],"platform":"--aarch64-unknown-linux-gnu","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-aarch64-unknown-linux-gnu-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-aarch64-unknown-linux-gnu-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "python_3_8": {
+          "bzlFile": "@@rules_python~0.24.0//python/private:toolchains_repo.bzl",
+          "ruleClassName": "toolchain_aliases",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8","python_version":"--3.8.15","user_repository_name":"--python_3_8"}
+        },
+        "python_3_11_x86_64-pc-windows-msvc": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_x86_64-pc-windows-msvc","sha256":"--edc08979cb0666a597466176511529c049a6f0bba8adf70df441708f766de5bf","patches":[],"platform":"--x86_64-pc-windows-msvc","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-x86_64-pc-windows-msvc-shared-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-x86_64-pc-windows-msvc-shared-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "python_3_8_x86_64-apple-darwin": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_x86_64-apple-darwin","sha256":"--70b57f28c2b5e1e3dd89f0d30edd5bc414e8b20195766cf328e1b26bed7890e1","patches":[],"platform":"--x86_64-apple-darwin","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-x86_64-apple-darwin-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-x86_64-apple-darwin-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "python_3_8_x86_64-pc-windows-msvc": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_x86_64-pc-windows-msvc","sha256":"--2fdc3fa1c95f982179bbbaedae2b328197658638799b6dcb63f9f494b0de59e2","patches":[],"platform":"--x86_64-pc-windows-msvc","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-x86_64-pc-windows-msvc-shared-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-x86_64-pc-windows-msvc-shared-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "python_3_11": {
+          "bzlFile": "@@rules_python~0.24.0//python/private:toolchains_repo.bzl",
+          "ruleClassName": "toolchain_aliases",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11","python_version":"--3.11.1","user_repository_name":"--python_3_11"}
+        },
+        "python_3_11_x86_64-apple-darwin": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_x86_64-apple-darwin","sha256":"--20a4203d069dc9b710f70b09e7da2ce6f473d6b1110f9535fb6f4c469ed54733","patches":[],"platform":"--x86_64-apple-darwin","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-x86_64-apple-darwin-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-x86_64-apple-darwin-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "python_versions": {
+          "bzlFile": "@@rules_python~0.24.0//python/private:toolchains_repo.bzl",
+          "ruleClassName": "multi_toolchain_aliases",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_versions","python_versions":{"--3.8":"--python_3_8","--3.11":"--python_3_11"}}
+        },
+        "python_3_8_x86_64-unknown-linux-gnu": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_8_x86_64-unknown-linux-gnu","sha256":"--e47edfb2ceaf43fc699e20c179ec428b6f3e497cf8e2dcd8e9c936d4b96b1e56","patches":[],"platform":"--x86_64-unknown-linux-gnu","python_version":"--3.8.15","release_filename":"--20221106/cpython-3.8.15+20221106-x86_64-unknown-linux-gnu-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20221106/cpython-3.8.15+20221106-x86_64-unknown-linux-gnu-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        },
+        "python_3_11_x86_64-unknown-linux-gnu": {
+          "bzlFile": "@@rules_python~0.24.0//python:repositories.bzl",
+          "ruleClassName": "python_repository",
+          "attributes": {"name":"--rules_python~0.24.0~python~python_3_11_x86_64-unknown-linux-gnu","sha256":"--02a551fefab3750effd0e156c25446547c238688a32fabde2995c941c03a6423","patches":[],"platform":"--x86_64-unknown-linux-gnu","python_version":"--3.11.1","release_filename":"--20230116/cpython-3.11.1+20230116-x86_64-unknown-linux-gnu-install_only.tar.gz","urls":["--https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-x86_64-unknown-linux-gnu-install_only.tar.gz"],"distutils":null,"distutils_content":"--","strip_prefix":"--python","coverage_tool":"--","ignore_root_user_error":false}
+        }
+      }
+    },
+    "@rules_python~0.24.0//python/extensions/private:internal_deps.bzl%internal_deps": {
+      "bzlTransitiveDigest": "d0GVFr68Y+3LHnWTnpXEqHou3XKRA+BYjeOeYY1wb2k=",
+      "accumulatedFileDigests": {},
+      "envVariables": {},
+      "generatedRepoSpecs": {
+        "pypi__wheel": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__wheel","url":"--https://files.pythonhosted.org/packages/bd/7c/d38a0b30ce22fc26ed7dbc087c6d00851fb3395e9d0dac40bec1f905030c/wheel-0.38.4-py3-none-any.whl","sha256":"--b60533f3f5d530e971d6737ca6d58681ee434818fab630c83a734bb10c083ce8","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__click": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__click","url":"--https://files.pythonhosted.org/packages/76/0a/b6c5f311e32aeb3b406e03c079ade51e905ea630fc19d1262a46249c1c86/click-8.0.1-py3-none-any.whl","sha256":"--fba402a4a47334742d782209a7c79bc448911afe1149d07bdabdf480b3e2f4b6","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__importlib_metadata": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__importlib_metadata","url":"--https://files.pythonhosted.org/packages/d7/31/74dcb59a601b95fce3b0334e8fc9db758f78e43075f22aeb3677dfb19f4c/importlib_metadata-1.4.0-py2.py3-none-any.whl","sha256":"--bdd9b7c397c273bcc9a11d6629a38487cd07154fa255a467bf704cd2c258e359","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__pep517": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__pep517","url":"--https://files.pythonhosted.org/packages/ee/2f/ef63e64e9429111e73d3d6cbee80591672d16f2725e648ebc52096f3d323/pep517-0.13.0-py3-none-any.whl","sha256":"--4ba4446d80aed5b5eac6509ade100bff3e7943a8489de249654a5ae9b33ee35b","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__packaging": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__packaging","url":"--https://files.pythonhosted.org/packages/8f/7b/42582927d281d7cb035609cd3a543ffac89b74f3f4ee8e1c50914bcb57eb/packaging-22.0-py3-none-any.whl","sha256":"--957e2148ba0e1a3b282772e791ef1d8083648bc131c8ab0c1feba110ce1146c3","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__pip_tools": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__pip_tools","url":"--https://files.pythonhosted.org/packages/5e/e8/f6d7d1847c7351048da870417724ace5c4506e816b38db02f4d7c675c189/pip_tools-6.12.1-py3-none-any.whl","sha256":"--f0c0c0ec57b58250afce458e2e6058b1f30a4263db895b7d72fd6311bf1dc6f7","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__setuptools": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__setuptools","url":"--https://files.pythonhosted.org/packages/7c/5b/3d92b9f0f7ca1645cba48c080b54fe7d8b1033a4e5720091d1631c4266db/setuptools-60.10.0-py3-none-any.whl","sha256":"--782ef48d58982ddb49920c11a0c5c9c0b02e7d7d1c2ad0aa44e1a1e133051c96","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__zipp": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__zipp","url":"--https://files.pythonhosted.org/packages/f4/50/cc72c5bcd48f6e98219fc4a88a5227e9e28b81637a99c49feba1d51f4d50/zipp-1.0.0-py2.py3-none-any.whl","sha256":"--8dda78f06bd1674bd8720df8a50bb47b6e1233c503a4eed8e7810686bde37656","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__colorama": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__colorama","url":"--https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl","sha256":"--4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__build": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__build","url":"--https://files.pythonhosted.org/packages/03/97/f58c723ff036a8d8b4d3115377c0a37ed05c1f68dd9a0d66dab5e82c5c1c/build-0.9.0-py3-none-any.whl","sha256":"--38a7a2b7a0bdc61a42a0a67509d88c71ecfc37b393baba770fae34e20929ff69","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__pip": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__pip","url":"--https://files.pythonhosted.org/packages/09/bd/2410905c76ee14c62baf69e3f4aa780226c1bbfc9485731ad018e35b0cb5/pip-22.3.1-py3-none-any.whl","sha256":"--908c78e6bc29b676ede1c4d57981d490cb892eb45cd8c214ab6298125119e077","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__installer": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__installer","url":"--https://files.pythonhosted.org/packages/e5/ca/1172b6638d52f2d6caa2dd262ec4c811ba59eee96d54a7701930726bce18/installer-0.7.0-py3-none-any.whl","sha256":"--05d1933f0a5ba7d8d6296bb6d5018e7c94fa473ceb10cf198a92ccea19c27b53","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__more_itertools": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__more_itertools","url":"--https://files.pythonhosted.org/packages/bd/3f/c4b3dbd315e248f84c388bd4a72b131a29f123ecacc37ffb2b3834546e42/more_itertools-8.13.0-py3-none-any.whl","sha256":"--c5122bffc5f104d37c1626b8615b511f3427aa5389b94d61e5ef8236bfbc3ddb","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
+        },
+        "pypi__tomli": {
+          "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+          "ruleClassName": "http_archive",
+          "attributes": {"name":"--rules_python~0.24.0~internal_deps~pypi__tomli","url":"--https://files.pythonhosted.org/packages/97/75/10a9ebee3fd790d20926a90a2547f0bf78f371b2f13aa822c759680ca7b9/tomli-2.0.1-py3-none-any.whl","sha256":"--939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc","type":"--zip","build_file_content":"--package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:defs.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude in /python/pip_install/tools/bazel.py\n        # to avoid non-determinism following pip install's behavior.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/* *\",\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"}
         }
       }
     }
