@@ -1,5 +1,7 @@
 package(default_visibility = ["//src:__subpackages__"])
 
+load("@rules_rust//rust:defs.bzl", "rust_static_library", "rust_test")
+
 cc_binary(
     name = "daemonize",
     srcs = ["daemonize.c"],
@@ -103,8 +105,31 @@ cc_binary(
             ":logging",
             ":process-tools",
             "//src/main/cpp/util",
+            ":linux-hermetic-sandbox-helpers-lib",
         ],
     }),
+)
+
+cc_library(
+    name = "linux-hermetic-sandbox-helpers-lib",
+    deps = [":linux-hermetic-sandbox-helpers"],
+    hdrs = ["linux-hermetic-sandbox-helpers.h"],
+)
+
+rust_static_library(
+    name = "linux-hermetic-sandbox-helpers",
+    srcs = ["linux-hermetic-sandbox-helpers.rs"],
+    deps = [
+        "@crate_index//:nix",
+        "@crate_index//:libc",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+    ],
+)
+rust_test(
+    name = "linux-hermetic-sandbox-helpers-test",
+    crate = ":linux-hermetic-sandbox-helpers",
 )
 
 exports_files([
