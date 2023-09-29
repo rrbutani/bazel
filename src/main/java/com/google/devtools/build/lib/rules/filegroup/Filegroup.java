@@ -43,6 +43,15 @@ import com.google.devtools.build.lib.packages.BuildType;
 import com.google.devtools.build.lib.packages.Type;
 import com.google.devtools.build.lib.util.FileTypeSet;
 import com.google.devtools.build.lib.vfs.PathFragment;
+import com.google.gson.annotations.SerializedName;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+
+import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
 
@@ -51,9 +60,10 @@ import javax.annotation.Nullable;
  */
 public class Filegroup implements RuleConfiguredTargetFactory {
 
-  /** Allows users to suppress soundness workings for directory source artifacts.
+  /** Allows users to suppress soundness warnings for directory source artifacts.
    *
-   * Only applies to files in `srcs` of the `filegroup`.
+   * Only applies to files in `srcs` of the `filegroup`; does not apply to file
+   * sources that are included in the filegroup transitively.
   */
   private static final String ALLOW_UNSOUND_DIRECTORY_SOURCES_TAG = "allow-unsound-directory-sources-in-direct-srcs";
 
@@ -120,6 +130,52 @@ public class Filegroup implements RuleConfiguredTargetFactory {
       }
 
       filesToBuild = newFilesToBuild.build();
+    }
+
+    // Handle excludes, if present:
+    var pathAttr = ruleContext.attributes().get("path", Type.STRING);
+    if (!pathAttr.isEmpty()) {
+      ExcludeInfo excludeInfo;
+      try {
+        excludeInfo = ExcludeInfo.fromJson(pathAttr);
+      } catch (JsonParseException exc) {
+        throw ruleContext.throwWithAttributeError(
+          "path", "error parsing JSON payload: " + exc.toString()
+        );
+      }
+
+      boolean empty = excludeInfo.hardExcludes.isEmpty() && excludeInfo.softExcludes.isEmpty();
+
+      // These are only value if there's a single source and no data elements
+      // in the file group:
+      if (!empty && !filesToBuild.isSingleton()) {
+        throw ruleContext.throwWithRuleError(
+          "hard and soft excludes can only be specified when there " +
+          "is a *single* directory source in `srcs`; we got " + filesToBuild.toList().size() +
+          " sources"
+        );
+      }
+
+      Artifact single = filesToBuild.getSingleton();
+      Label label = single.getArtifactOwner().getLabel();
+      if (!single.isSourceArtifact()) {
+        throw ruleContext.throwWithAttributeError("srcs",
+          "hard and soft excludes can only be specified when there " +
+          "is a single *directory source* in `srcs`; " + label.toString() +
+          " is not a source artifact"
+        );
+      }
+
+      // TODO: check that this is a directory...
+      // System.out.println(single.getExecPathString());
+      // System.out.println(single.getRootRelativePathString());
+      // System.out.println(Label.getContainingDirectory(label));
+
+      SourceArtifact dir = (SourceArtifact)single;
+      excludeInfo.hardExcludes.forEach((h) -> dir.addHardExclude(h));
+      excludeInfo.softExcludes.forEach((s) -> dir.addSoftExclude(s));
+
+      filesToBuild = NestedSetBuilder.create(Order.STABLE_ORDER, dir);
     }
 
     InstrumentedFilesInfo instrumentedFilesProvider =
@@ -196,5 +252,90 @@ public class Filegroup implements RuleConfiguredTargetFactory {
     }
 
     return result.build();
+  }
+}
+
+// NOTE: these excludes are specified via the `path` argument, within a JSON
+// blob.
+//
+// This *is* distasteful and ideally we'd have new attributes for these but we
+// it to be easy for users to maintain compatiblity with Bazel releases that
+// don't have this patch.
+//
+// Normally we'd use `execution_properties` but those aren't permitted on
+// filegroups. `path` already existed and was unused. Another option would have
+// been to abuse tags (i.e. scan for tags with a prefix and then a payload) but
+// that seems even worse.
+//
+// NOTE: we require specifying the single source that these excludes are
+// relative to within `srcs` rather than within our `path` payload so that we do
+// not have to reinvent logic to create a `SourceArtifact` for that path and
+// verify that is exists, etc.
+//
+// NOTE: this silently allows extra fields... not ideal
+class ExcludeInfo {
+  /** List of relative paths indicating which paths to exclude when creating
+   ** bind mounts for the hermetic linux sandbox.
+  *
+  * This attribute is to be specified within the `path` argument's stringified
+  * (JSON) payload; it should correspond to a value that is a list of strings.
+  *
+  * This attribute can only be specified when there is a single value in `srcs`
+  * that corresponds to a source directory. The given relative paths will be
+  * relative to the resolved (realpath) of this directory.
+  *
+  * When not using the hermetic linux sandbox, this attribute has no effect.
+  *
+  * "Hard" excludes instruct the sandbox to rearrange the other bind mounts such
+  * that no file or directory is present at the excluded path. In the case of
+  * deeply nested excludes and/or excludes with ancestor directories containing
+  * many immediate children, this can be expensive. See the comments on
+  * {@link SourceArtifact#getHardExcludes} for details.
+  *
+  */
+  @SerializedName("hermetic-sandbox-bind-mount-hard-excludes")
+  final ArrayList<PathFragment> hardExcludes;
+
+  /** Like {@link ExcludeInfo#hardExcludes} but for "soft" excludes.
+   *
+   * See the comments on {@link SourceArtifact#getSoftExcludes} for details.
+   */
+  @SerializedName("hermetic-sandbox-bind-mount-soft-excludes")
+  final ArrayList<PathFragment> softExcludes;
+
+  ExcludeInfo() {
+    this.hardExcludes = new ArrayList<PathFragment>();
+    this.softExcludes = new ArrayList<PathFragment>();
+  }
+
+  static ExcludeInfo fromJson(String source) throws JsonParseException {
+    var gsonBuilder = new GsonBuilder().setPrettyPrinting();
+    gsonBuilder.registerTypeAdapter(
+      PathFragment.class,
+      new JsonDeserializer<PathFragment>() {
+        public PathFragment deserialize(JsonElement elem, java.lang.reflect.Type _typeOfT, JsonDeserializationContext _ctx)
+          throws JsonParseException
+        {
+          // Note: normalized `..`s out internally; this is incorrect in the
+          // presence of symlinks
+          PathFragment frag = PathFragment.create(elem.getAsJsonPrimitive().getAsString());
+          if (frag.isAbsolute()) {
+            throw new JsonParseException(
+              "exclude paths must be relative but an absolute path was given: " + frag.toString()
+            );
+          }
+
+          if (frag.containsUplevelReferences()) {
+            throw new JsonParseException(
+              "exclude paths cannot contain `..`: " + frag.toString()
+            );
+          }
+
+          return frag;
+        }
+      }
+    );
+
+    return gsonBuilder.create().fromJson(source, ExcludeInfo.class);
   }
 }
