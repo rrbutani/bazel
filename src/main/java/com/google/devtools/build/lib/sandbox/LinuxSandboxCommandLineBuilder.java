@@ -61,6 +61,8 @@ public class LinuxSandboxCommandLineBuilder {
   private Path stderrPath;
   private Set<Path> writableFilesAndDirectories = ImmutableSet.of();
   private ImmutableSet<PathFragment> tmpfsDirectories = ImmutableSet.of();
+  private Set<Path> hardExcludePaths = ImmutableSet.of();
+  private Set<Path> softExcludePaths = ImmutableSet.of();
   private List<BindMount> bindMounts = ImmutableList.of();
   private Path statisticsPath;
   private boolean useFakeHostname = false;
@@ -169,6 +171,24 @@ public class LinuxSandboxCommandLineBuilder {
   @CanIgnoreReturnValue
   public LinuxSandboxCommandLineBuilder setBindMounts(List<BindMount> bindMounts) {
     this.bindMounts = bindMounts;
+    return this;
+  }
+
+  /**
+   * Sets the paths of files to forcibly exclude from being bind-mounted into
+   * the sandbox (a.k.a. hard exclude paths).
+   *
+   * Can only be used when the Linux hermetic sandbox is enabled.
+   */
+  @CanIgnoreReturnValue
+  public LinuxSandboxCommandLineBuilder setHardExcludes(Set<Path> exPaths) {
+    this.hardExcludePaths = exPaths;
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  public LinuxSandboxCommandLineBuilder setSoftExcludes(Set<Path> exPaths) {
+    this.softExcludePaths = exPaths;
     return this;
   }
 
@@ -282,6 +302,12 @@ public class LinuxSandboxCommandLineBuilder {
       if (!bindMount.getContent().equals(bindMount.getMountPoint())) {
         commandLineBuilder.add("-m", bindMount.getMountPoint().getPathString());
       }
+    }
+    for (Path exclude : hardExcludePaths) {
+      commandLineBuilder.add("-E", exclude.getPathString());
+    }
+    for (Path exclude : softExcludePaths) {
+      commandLineBuilder.add("-Z", exclude.getPathString());
     }
     if (statisticsPath != null) {
       commandLineBuilder.add("-S", statisticsPath.getPathString());
