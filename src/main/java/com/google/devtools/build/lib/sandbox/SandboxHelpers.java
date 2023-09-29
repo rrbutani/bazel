@@ -30,6 +30,7 @@ import com.google.devtools.build.lib.actions.ActionInput;
 import com.google.devtools.build.lib.actions.Artifact;
 import com.google.devtools.build.lib.actions.Spawn;
 import com.google.devtools.build.lib.actions.UserExecException;
+import com.google.devtools.build.lib.actions.Artifact.SourceArtifact;
 import com.google.devtools.build.lib.actions.cache.VirtualActionInput;
 import com.google.devtools.build.lib.actions.cache.VirtualActionInput.EmptyActionInput;
 import com.google.devtools.build.lib.analysis.test.TestConfiguration;
@@ -361,23 +362,30 @@ public final class SandboxHelpers {
     private final Map<VirtualActionInput, byte[]> virtualInputs;
     private final Map<PathFragment, PathFragment> symlinks;
     private final Map<Root, Path> sourceRootBindMounts;
-    private final List<Path> externalSourceArtifactBindMounts;
+    private final ImmutableSet<Path> externalSourceArtifactBindMounts;
+    private final ImmutableSet<Path> externalSourceArtifactHardExcludes;
+    private final ImmutableSet<Path> externalSourceArtifactSoftExcludes;
 
     private static final SandboxInputs EMPTY_INPUTS =
         new SandboxInputs(
-            ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of(), ImmutableList.of());
+            ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of(), ImmutableMap.of(),
+            ImmutableSet.of(), ImmutableSet.of(), ImmutableSet.of());
 
     public SandboxInputs(
         Map<PathFragment, RootedPath> files,
         Map<VirtualActionInput, byte[]> virtualInputs,
         Map<PathFragment, PathFragment> symlinks,
         Map<Root, Path> sourceRootBindMounts,
-        List<Path> externalSourceArtifactBindMounts) {
+        ImmutableSet<Path> externalSourceArtifactBindMounts,
+        ImmutableSet<Path> externalSourceArtifactHardExcludes,
+        ImmutableSet<Path> externalSourceArtifactSoftExcludes) {
       this.files = files;
       this.virtualInputs = virtualInputs;
       this.symlinks = symlinks;
       this.sourceRootBindMounts = sourceRootBindMounts;
       this.externalSourceArtifactBindMounts = externalSourceArtifactBindMounts;
+      this.externalSourceArtifactHardExcludes = externalSourceArtifactHardExcludes;
+      this.externalSourceArtifactSoftExcludes = externalSourceArtifactSoftExcludes;
     }
 
     public static SandboxInputs getEmptyInputs() {
@@ -396,8 +404,16 @@ public final class SandboxHelpers {
       return sourceRootBindMounts;
     }
 
-    public List<Path> getExternalSourceArtifactBindMounts() {
+    public ImmutableSet<Path> getExternalSourceArtifactBindMounts() {
       return externalSourceArtifactBindMounts;
+    }
+
+    public ImmutableSet<Path> getExternalSourceArtifactSoftExcludes() {
+      return externalSourceArtifactSoftExcludes;
+    }
+
+    public ImmutableSet<Path> getExternalSourceArtifactHardExcludes() {
+      return externalSourceArtifactHardExcludes;
     }
 
     public ImmutableMap<VirtualActionInput, byte[]> getVirtualInputDigests() {
@@ -417,10 +433,15 @@ public final class SandboxHelpers {
       Map<Root, Path> limitedSourceRoots =
           Maps.filterKeys(sourceRootBindMounts, usedRoots::contains);
 
-      // TODO: filter `externalSourceArtifactBindMounts` correctly!
+      // TODO: filter `externalSourceArtifactHardExcludes` correctly!
+      // TODO: filter `externalSourceArtifactSoftExcludes` correctly!
 
       return new SandboxInputs(
-          limitedFiles, ImmutableMap.of(), limitedSymlinks, limitedSourceRoots, this.externalSourceArtifactBindMounts);
+          limitedFiles, ImmutableMap.of(), limitedSymlinks, limitedSourceRoots,
+          this.externalSourceArtifactBindMounts,
+          this.externalSourceArtifactHardExcludes,
+          this.externalSourceArtifactSoftExcludes
+      );
     }
 
     @Override
@@ -492,7 +513,9 @@ public final class SandboxHelpers {
     Map<PathFragment, PathFragment> inputSymlinks = new TreeMap<>();
     Map<VirtualActionInput, byte[]> virtualInputs = new HashMap<>();
     Map<Root, Root> sourceRootToSandboxSourceRoot = new TreeMap<>();
-    Set<Path> externalSourceArtifactPaths = new HashSet<>();
+    ImmutableSet.Builder<Path> externalSourceArtifactPaths = ImmutableSet.builder();
+    ImmutableSet.Builder<Path> externalSourceArtifactHardExcludes = ImmutableSet.builder();
+    ImmutableSet.Builder<Path> externalSourceArtifactSoftExcludes = ImmutableSet.builder();
 
     for (Map.Entry<PathFragment, ActionInput> e : inputMap.entrySet()) {
       if (Thread.interrupted()) {
@@ -681,7 +704,11 @@ public final class SandboxHelpers {
     Map<Root, Path> sandboxRootToSourceRoot = new TreeMap<>();
     sourceRootToSandboxSourceRoot.forEach((k, v) -> sandboxRootToSourceRoot.put(v, k.asPath()));
 
-    return new SandboxInputs(inputFiles, virtualInputs, inputSymlinks, sandboxRootToSourceRoot, ImmutableList.copyOf(externalSourceArtifactPaths));
+    return new SandboxInputs(
+      inputFiles, virtualInputs, inputSymlinks, sandboxRootToSourceRoot,
+      externalSourceArtifactPaths.build(), externalSourceArtifactHardExcludes.build(),
+      externalSourceArtifactSoftExcludes.build()
+    );
   }
 
   /** The file and directory outputs of a sandboxed spawn. */
