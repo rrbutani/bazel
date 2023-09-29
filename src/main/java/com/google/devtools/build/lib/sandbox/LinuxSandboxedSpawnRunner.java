@@ -334,12 +334,18 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
 
     boolean createNetworkNamespace =
         !(allowNetwork || Spawns.requiresNetwork(spawn, sandboxOptions.defaultSandboxAllowNetwork));
+
+    BindMountsAndExcludes bindMountsAndExcludes =
+      getBindMountsAndExcludes(blazeDirs, inputs, sandboxExecRootBase, sandboxTmp);
+
     LinuxSandboxCommandLineBuilder commandLineBuilder =
         LinuxSandboxCommandLineBuilder.commandLineBuilder(linuxSandbox, spawn.getArguments())
             .addExecutionInfo(spawn.getExecutionInfo())
             .setWritableFilesAndDirectories(writableDirs)
             .setTmpfsDirectories(ImmutableSet.copyOf(getSandboxOptions().sandboxTmpfsPath))
-            .setBindMounts(getBindMounts(blazeDirs, inputs, sandboxExecRootBase, sandboxTmp))
+            .setBindMounts(bindMountsAndExcludes.bindMounts)
+            .setHardExcludes(bindMountsAndExcludes.hardExcludes)
+            .setSoftExcludes(bindMountsAndExcludes.softExcludes)
             .setUseFakeHostname(getSandboxOptions().sandboxFakeHostname)
             .setEnablePseudoterminal(getSandboxOptions().sandboxExplicitPseudoterminal)
             .setCreateNetworkNamespace(createNetworkNamespace ? NETNS_WITH_LOOPBACK : NO_NETNS)
@@ -450,7 +456,19 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     return writableDirs.build();
   }
 
-  private ImmutableList<BindMount> getBindMounts(
+  private class BindMountsAndExcludes {
+    ImmutableList<BindMount> bindMounts;
+    ImmutableSet<Path> hardExcludes;
+    ImmutableSet<Path> softExcludes;
+
+    BindMountsAndExcludes(ImmutableList<BindMount> bindMounts, ImmutableSet<Path> hardExcludes, ImmutableSet<Path> softExcludes) {
+      this.bindMounts = bindMounts;
+      this.softExcludes = softExcludes;
+      this.hardExcludes = hardExcludes;
+    }
+  }
+
+  private BindMountsAndExcludes getBindMountsAndExcludes(
       BlazeDirectories blazeDirs,
       SandboxInputs inputs,
       Path sandboxExecRootBase,
@@ -458,15 +476,46 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
       throws UserExecException {
     Path tmpPath = fileSystem.getPath("/tmp");
     Path hermeticTmpPath = fileSystem.getPath("/_hermetic_tmp");
+
+    // Note: we'd like to model soft excludes as regular bind mounts (with empty
+    // dir/source files) and not have this distinction exist in the sandbox
+    // runner. Unfortunately there are two impedients to this:
+    //   - we'd need to know the filetype of the soft exclude (i.e. file, dir,
+    //     symlink) before hand so that we can pick an appropriate bind mount
+    //     source
+    //     + for excludes that are symlinks we'll need to either include it in
+    //       the mount resolution logic (i.e. splat) or error
+    //   - we'd need to have the the sandbox do the optimization where it allows
+    //     compatible mounts to live ontop of existing mounts in order for this
+    //     not to be inefficient (the whole point is that we don't splat).
+    //
+    // So for now we maintain the hard/soft exclude distinction all the way
+    // into the sandbox.
+    ImmutableSet.Builder<Path> hardExcludePaths = ImmutableSet.builder();
+    ImmutableSet.Builder<Path> softExcludePaths = ImmutableSet.builder();
+
     final SortedMap<Path, Path> bindMounts = Maps.newTreeMap();
     SandboxHelpers.mountAdditionalPaths(
         getSandboxOptions().sandboxAdditionalMounts, sandboxExecRootBase, bindMounts);
 
-    for (Path inaccessiblePath : getInaccessiblePaths()) {
-      if (inaccessiblePath.isDirectory(Symlinks.NOFOLLOW)) {
-        bindMounts.put(inaccessiblePath, inaccessibleHelperDir);
-      } else {
-        bindMounts.put(inaccessiblePath, inaccessibleHelperFile);
+    if (getSandboxOptions().useHermetic) {
+      // if we're using the hermetic sandbox, convey to the sandbox that we wish
+      // to exclude these files — it will re-arrange the mounts so that nothing
+      // lands at these paths
+      //
+      // the sandbox can do this when the hemetic sandbox is enabled because it
+      // starts with nothing and selectively mounts in host paths (rather than
+      // starting with the entire host filesystem)
+      hardExcludePaths.addAll(getInaccessiblePaths());
+    } else {
+      // if we're not using the hermetic sandbox, bind mount our helpers over
+      // the blocked paths to make them inaccessible
+      for (Path inaccessiblePath : getInaccessiblePaths()) {
+        if (inaccessiblePath.isDirectory(Symlinks.NOFOLLOW)) {
+          bindMounts.put(inaccessiblePath, inaccessibleHelperDir);
+        } else {
+          bindMounts.put(inaccessiblePath, inaccessibleHelperFile);
+        }
       }
     }
 
@@ -543,8 +592,14 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
       result.add(BindMount.of(execrootDir, execrootDir));
     }
 
+    // excludes:
+    if (getSandboxOptions().useHermetic) {
+      hardExcludePaths.addAll(inputs.getExternalSourceArtifactHardExcludes());
+      softExcludePaths.addAll(inputs.getExternalSourceArtifactSoftExcludes());
+    }
+
     bindMounts.forEach((k, v) -> result.add(BindMount.of(k, v)));
-    return result.build();
+    return new BindMountsAndExcludes(result.build(), hardExcludePaths.build(), softExcludePaths.build());
   }
 
   @Override
