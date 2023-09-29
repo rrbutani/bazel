@@ -664,12 +664,15 @@ public final class SandboxHelpers {
                 break;
               }
 
+              // TODO: isn't this redundant?
+              /*
               if (p.isSymbolicLink()) {
                 PathFragment link = p.readSymbolicLink();
                 if (link.isAbsolute()) {
                   externalSourceArtifactPaths.add(p.getFileSystem().getPath(link));
                 }
               }
+              */
 
               // if this slow we can:
               //  - infer the repo
