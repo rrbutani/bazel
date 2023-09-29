@@ -49,6 +49,7 @@ java_library(
     srcs = ["LinuxSandboxCommandLineBuilder.java"],
     data = ["//src/main/tools:linux-sandbox"],
     deps = [
+        "//src/main/java/com/google/devtools/build/lib/actions:artifacts",
         "//src/main/java/com/google/devtools/build/lib/actions:execution_requirements",
         "//src/main/java/com/google/devtools/build/lib/vfs",
         "//src/main/java/com/google/devtools/build/lib/vfs:pathfragment",
