@@ -549,6 +549,7 @@ public final class SandboxHelpers {
         } else if (actionInput instanceof Artifact) {
           Artifact inputArtifact = (Artifact) actionInput;
           if (inputArtifact.isSourceArtifact() && sandboxSourceRoots != null) {
+            SourceArtifact inputSourceArtifact = (SourceArtifact)inputArtifact;
             Root sourceRoot = inputArtifact.getRoot().getRoot();
             if (!sourceRootToSandboxSourceRoot.containsKey(sourceRoot)) {
               int next = sourceRootToSandboxSourceRoot.size();
@@ -575,7 +576,30 @@ public final class SandboxHelpers {
             // invocations just by emitting symlinks to them
             // logger.atInfo().log("%s: %s", inputArtifact, inputArtifact.getPath());
 
-            if (inputArtifact.getRoot().isExternal()) {
+            // do we want to handle soft/hard excludes in non-external sources?
+            //
+            // for now, no (TODO: revisit)
+            boolean hasExcludes = !inputSourceArtifact.getHardExcludes().isEmpty()
+              || !inputSourceArtifact.getSoftExcludes().isEmpty();
+            boolean isExternal = inputArtifact.getRoot().isExternal();
+
+            if (hasExcludes && !isExternal) {
+              String msg = String.format(
+                "Source Artifact `%s` (from `%s`) has hard excludes (%s) and/or soft excludes (%s); " +
+                "these are being ignored because the artifact is not external!",
+                inputSourceArtifact.getPath(), inputSourceArtifact.getArtifactOwner().getLabel(),
+                inputSourceArtifact.getHardExcludes(),
+                inputSourceArtifact.getSoftExcludes()
+              );
+
+              logger.atWarning().log("%s", msg);
+
+              if (this.reporter != null) {
+                reporter.handle(Event.warn(msg).withTag("ignored-excludes"));
+              }
+            }
+
+            if (isExternal) {
               // follow symlinks in inputArtifacts that originate from
               // `new_local_repository`!
               // todo
@@ -675,6 +699,71 @@ public final class SandboxHelpers {
                 }
               }
               */
+
+              // for hard/soft excludes: we resolve the directory they're
+              // relative to before assembling the final path
+              //
+              // warn and skip if the source artifact they're tied to is not
+              // actually a dir I guess?
+              //
+              // if we end up resolving symlinks to get to a realpath for the
+              // directory, I think we just exclude the realpath of the base dir
+              // + the relative soft/hard exclude... (it doesn't make sense to
+              // issue excludes for all the paths along the way...)
+              //
+              // if the relative exclude path itself contains symlinks... we'll
+              // warn for now (for soft excludes; for hard excludes this will
+              // result in splatting)
+              if (hasExcludes) {
+                var base = fs.getPath(curr);
+                if (base.isDirectory(Symlinks.NOFOLLOW)) {
+                  var hardExcludes = inputSourceArtifact.getHardExcludes().stream().map((h) -> {
+                    assert !h.isAbsolute(); // should be guaranteed
+                    return base.getRelative(h);
+                  });
+                  externalSourceArtifactHardExcludes.addAll(hardExcludes.iterator());
+
+                  var softExcludes = inputSourceArtifact.getSoftExcludes().stream().map((s) -> {
+                    assert !s.isAbsolute(); // should be guaranteed
+                    var path = base.getRelative(s);
+
+                    Path resolvedPath;
+                    try {
+                      resolvedPath = path.resolveSymbolicLinks();
+                    } catch (IOException ex) {
+                      logger.atWarning().log("exception will resolving path `%s`: %s", path, ex);
+                      resolvedPath = path;
+                    }
+
+                    if (resolvedPath != path) {
+                      String msg = String.format(
+                        "Soft excludes should not contain symbolic links but " +
+                        "exclude `%s` (beneath `%s` from `%s`) does; absolute path " +
+                        "`%s` actually resolves to `%s`. This will result in " +
+                        "the latter path being excluded instead of the former.",
+                        s, base, inputSourceArtifact.getArtifactOwner().getLabel(),
+                        path, resolvedPath
+                      );
+                      logger.atWarning().log("%s", msg);
+                      if (reporter != null) {
+                        reporter.handle(Event.warn(msg).withTag("soft-exclude-with-symlinks"));
+                      }
+                    }
+
+                    return path;
+                  });
+                  externalSourceArtifactSoftExcludes.addAll(softExcludes.iterator());
+                } else {
+                  String msg = String.format(
+                    "Ignoring excludes (soft = `%s`, hard = `%s`) for external " +
+                    "source artifact `%s` (from: %s) because it is *not* a directory!",
+                    inputSourceArtifact.getSoftExcludes(), inputSourceArtifact.getHardExcludes(),
+                    curr, inputSourceArtifact.getArtifactOwner().getLabel()
+                  );
+                  logger.atWarning().log("%s", msg);
+                  if (reporter != null) { reporter.handle(Event.warn(msg).withTag("ignored-excludes")); }
+                }
+              }
 
               // if this slow we can:
               //  - infer the repo
