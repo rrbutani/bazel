@@ -56,9 +56,12 @@ import com.google.protobuf.CodedOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 import net.starlark.java.eval.EvalException;
@@ -935,20 +938,21 @@ public abstract class Artifact
   public static final class SourceArtifact extends Artifact {
     private final ArtifactOwner owner;
 
-    // if true, indicates that the target from which this source artifact was
-    // created has specified that it is okay for this artifact, if it is a
-    // directory, to be untracked.
-    //
-    // this silences warnings about directory sources being unsound in dependent
-    // actions
-    private boolean hasUntrackedDirectoryExemption;
-
     @VisibleForTesting
     public SourceArtifact(ArtifactRoot root, PathFragment execPath, ArtifactOwner owner) {
       super(root, execPath, execPath.hashCode());
       this.owner = owner;
+      this.hasUntrackedDirectoryExemption = false;
     }
 
+    /**
+     * if true, indicates that the target from which this source artifact was
+     * created has specified that it is okay for this artifact, if it is a
+     * directory, to be untracked.
+     *
+     * this silences warnings about directory sources being unsound in dependent
+     * actions
+     */
     public boolean hasUntrackedDirectoryExemption() {
       return this.hasUntrackedDirectoryExemption;
     }
@@ -956,6 +960,83 @@ public abstract class Artifact
     public void setUntrackedDirectoryExemption(boolean val) {
       this.hasUntrackedDirectoryExemption = val;
     }
+    private boolean hasUntrackedDirectoryExemption;
+
+    /**
+     * set of paths beneath this source artifact to *exclude* when bind mounting
+     * this artifact into the hermetic sandbox
+     *
+     * this is only valid if the source artifact is a directory (or a symlink to
+     * a directory)
+     *
+     * "hard" excludes differ from "soft" excludes in that they are actually
+     * not mounted into the hermetic sandbox root; other mounts are "splatted"
+     * and rearranged so that there is nothing at the excluded path
+     *
+     * i.e. for this directory structure:
+     * ```
+     * foo
+     * ├── a
+     * ├── b
+     * ├── bar
+     * │   ├── baz
+     * │   └── quux
+     * ├── c
+     * ├── d
+     * ├── e
+     * └── f
+     * ```
+     *
+     * having a "hard" exclude for `foo/bar/baz` will cause the bind mount for
+     * `foo` to be "splatted" into the following mounts:
+     *   - `foo/a`
+     *   - `foo/b`
+     *   - `foo/bar/baz`
+     *   - `foo/c`
+     *   - `foo/d`
+     *   - `foo/e`
+     *   - `foo/f`
+     *
+     * for deeply nested excludes where any of the ancestor directories have
+     * many children, this can be a performance hazard; consider using "soft"
+     * excludes instead for these cases
+     */
+    @Nullable
+    public Set<PathFragment> getHardExcludes() {
+      return (this.hardExcludes != null) ? this.hardExcludes : this.empty;
+    }
+
+    /**
+     * like `hardExcludes` but instead of re-arranging/"splatting" bind mounts
+     * to exclude the given path, simply bind mounts an empty file/directory
+     * on top of the mount instead
+     *
+     * if you can tolerate an empty file/directory, this may be preferable over
+     * hard excludes, especially for deeply nested excludes
+     *
+     * the one caveat is that soft excludes are *not* checked for collisions in
+     * any way; if you specify a soft exclude for a part it will take precedence
+     * over more specific bind mounts beneath that path
+    */
+    @Nullable
+    public Set<PathFragment> getSoftExcludes() {
+      return (this.softExcludes != null) ? this.softExcludes : this.empty;
+    }
+
+    public void addHardExclude(PathFragment relativePath) {
+      if (this.hardExcludes == null) { this.hardExcludes = new HashSet(); }
+      this.hardExcludes.add(relativePath);
+    }
+
+    public void addSoftExclude(PathFragment relativePath) {
+      if (this.softExcludes == null) { this.softExcludes = new HashSet(); }
+      this.softExcludes.add(relativePath);
+    }
+
+    private Set<PathFragment> hardExcludes = null;
+    private Set<PathFragment> softExcludes = null;
+
+    private final static Set<PathFragment> empty = Collections.emptySet();
 
     /**
      * Source artifacts do not consider their owners in equality checks, since their owners are
