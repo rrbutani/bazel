@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.google.common.flogger.GoogleLogger;
 import com.google.common.io.ByteStreams;
 import com.google.devtools.build.lib.actions.ActionInput;
 import com.google.devtools.build.lib.actions.ExecException;
@@ -45,8 +46,10 @@ import com.google.devtools.build.lib.runtime.CommandEnvironment;
 import com.google.devtools.build.lib.sandbox.LinuxSandboxCommandLineBuilder.BindMount;
 import com.google.devtools.build.lib.sandbox.SandboxHelpers.SandboxInputs;
 import com.google.devtools.build.lib.sandbox.SandboxHelpers.SandboxOutputs;
+import com.google.devtools.build.lib.shell.AbnormalTerminationException;
 import com.google.devtools.build.lib.shell.Command;
 import com.google.devtools.build.lib.shell.CommandException;
+import com.google.devtools.build.lib.shell.CommandResult;
 import com.google.devtools.build.lib.util.OS;
 import com.google.devtools.build.lib.vfs.FileStatus;
 import com.google.devtools.build.lib.vfs.FileSystem;
@@ -118,6 +121,23 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     try (SilentCloseable c = Profiler.instance().profile("LinuxSandboxedSpawnRunner.isSupported")) {
       cmd.execute(ByteStreams.nullOutputStream(), ByteStreams.nullOutputStream());
     } catch (CommandException e) {
+      CommandResult res = null;
+      if (e instanceof AbnormalTerminationException) {
+        res = ((AbnormalTerminationException)e).getResult();
+      }
+
+      final GoogleLogger logger = GoogleLogger.forEnclosingClass();
+      logger.atWarning().log(
+        "linux-sandbox not supported, error while executing: %s\n" +
+        "cmd: `%s`\n" +
+        "stdout: %s\n" +
+        "stderr: %s\n",
+        e.getMessage(),
+        e.getCommand().toDebugString(),
+        (res != null) ? (res.getStdoutStream().toString()): "",
+        (res != null) ? (res.getStderrStream().toString()): ""
+      );
+
       return false;
     }
 
