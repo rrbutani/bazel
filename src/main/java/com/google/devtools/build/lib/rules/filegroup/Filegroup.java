@@ -167,9 +167,10 @@ public class Filegroup implements RuleConfiguredTargetFactory {
       }
 
       // TODO: check that this is a directory...
-      // System.out.println(single.getExecPathString());
-      // System.out.println(single.getRootRelativePathString());
-      // System.out.println(Label.getContainingDirectory(label));
+      //
+      // for now this check is deferred to execution (during which users will
+      // get a warning that the excludes are ignored if the source artifact
+      // they're tied to is not a directory)
 
       SourceArtifact dir = (SourceArtifact)single;
       excludeInfo.hardExcludes.forEach((h) -> dir.addHardExclude(h));
@@ -308,6 +309,9 @@ class ExcludeInfo {
     this.softExcludes = new ArrayList<PathFragment>();
   }
 
+  // TODO: we'd like to be able to warn/error on extra fields in the JSON blob
+  // that we do not recognize but I was not able to find a straightforward way
+  // to do this with gson; probably missing something
   static ExcludeInfo fromJson(String source) throws JsonParseException {
     var gsonBuilder = new GsonBuilder().setPrettyPrinting();
     gsonBuilder.registerTypeAdapter(
