@@ -62,6 +62,11 @@ static void Usage(char *program_name, const char *fmt, ...) {
           "  -w <file>  make a file or directory writable for the sandboxed "
           "process\n"
           "  -e <dir>  mount an empty tmpfs on a directory\n"
+          "  -E <path> 'hard' exclude a path from being mounted\n"
+          "    Requires the hermetic sandbox (i.e. `-h` must be set)\n"
+          "  -Z <path> 'soft' exclude a path from being mounted\n"
+          "    Unlike `-E` this only mounts an empty file/dir over the path\n"
+          "    Requires the hermetic sandbox (i.e. `-h` must be set)\n"
           "  -M/-m <source/target>  directory to mount inside the sandbox\n"
           "    Multiple directories can be specified and each of them will be "
           "mounted readonly.\n"
@@ -102,7 +107,7 @@ static void ParseCommandLine(unique_ptr<vector<char *>> args) {
   int c;
   bool source_specified = false;
   while ((c = getopt(args->size(), args->data(),
-                     ":W:T:t:il:L:w:e:M:m:S:h:pC:HnNRUPD:")) != -1) {
+                     ":W:T:t:il:L:w:e:E:Z:M:m:S:h:pC:HnNRUPD:")) != -1) {
     if (c != 'M' && c != 'm') source_specified = false;
     switch (c) {
       case 'W':
@@ -155,6 +160,14 @@ static void ParseCommandLine(unique_ptr<vector<char *>> args) {
       case 'e':
         ValidateIsAbsolutePath(optarg, args->front(), static_cast<char>(c));
         opt.tmpfs_dirs.emplace_back(optarg);
+        break;
+      case 'E':
+        ValidateIsAbsolutePath(optarg, args->front(), static_cast<char>(c));
+        opt.hard_exclude_paths.emplace_back(optarg);
+        break;
+      case 'Z':
+        ValidateIsAbsolutePath(optarg, args->front(), static_cast<char>(c));
+        opt.soft_exclude_paths.emplace_back(optarg);
         break;
       case 'M':
         ValidateIsAbsolutePath(optarg, args->front(), static_cast<char>(c));
@@ -263,6 +276,12 @@ static void ParseCommandLine(unique_ptr<vector<char *>> args) {
           "working-dir %s (-W) should be a "
           "subdirectory of sandbox-dir %s (-h)",
           opt.working_dir.c_str(), opt.sandbox_root.c_str());
+  }
+  if (!(opt.hard_exclude_paths.empty() && opt.soft_exclude_paths.empty()) && opt.sandbox_root.empty()) {
+    Usage(args->front(),
+          "hard (-E) and soft (-Z) exclude paths can only be specified "
+          "when using the hermetic sandbox (-h)"
+    );
   }
   if (optind < static_cast<int>(args->size())) {
     if (opt.args.empty()) {

@@ -43,6 +43,11 @@ struct Options {
   std::vector<std::string> writable_files;
   // Directories where to mount an empty tmpfs (-e)
   std::vector<std::string> tmpfs_dirs;
+  // Paths to exclude from being mounted into the hermetic sandbox (-E)
+  std::vector<char*> hard_exclude_paths;
+  // Paths to shadow with empty file/directory bind mounts, after all other bind
+  // mounts have been created (-Z)
+  std::vector<char*> soft_exclude_paths;
   // Source of files or directories to explicitly bind mount in the sandbox (-M)
   std::vector<char*> bind_mount_sources;
   // Target of files or directories to explicitly bind mount in the sandbox (-m)
