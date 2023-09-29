@@ -195,7 +195,7 @@ public final class SandboxModule extends BlazeModule {
     sandboxBase = computeSandboxBase(options, env);
     Path trashBase = sandboxBase.getRelative("_moved_trash_dir");
 
-    SandboxHelpers helpers = new SandboxHelpers();
+    SandboxHelpers helpers = new SandboxHelpers(cmdEnv.getReporter());
 
     // Do not remove the sandbox base when --sandbox_debug was specified so that people can check
     // out the contents of the generated sandbox directories.

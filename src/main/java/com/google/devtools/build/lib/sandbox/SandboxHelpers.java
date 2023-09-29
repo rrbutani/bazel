@@ -38,6 +38,8 @@ import com.google.devtools.build.lib.actions.cache.VirtualActionInput;
 import com.google.devtools.build.lib.actions.cache.VirtualActionInput.EmptyActionInput;
 import com.google.devtools.build.lib.analysis.test.TestConfiguration;
 import com.google.devtools.build.lib.cmdline.LabelConstants;
+import com.google.devtools.build.lib.events.Event;
+import com.google.devtools.build.lib.events.Reporter;
 import com.google.devtools.build.lib.exec.TreeDeleter;
 import com.google.devtools.build.lib.server.FailureDetails.FailureDetail;
 import com.google.devtools.build.lib.server.FailureDetails.Sandbox;
@@ -74,6 +76,12 @@ import javax.annotation.Nullable;
  * <p>All sandboxed strategies within a build should share the same instance of this object.
  */
 public final class SandboxHelpers {
+  public SandboxHelpers(Reporter reporter) { this.reporter = reporter; }
+  public SandboxHelpers() { }
+
+  @Nullable
+  private Reporter reporter = null;
+
   private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
 
   private static final AtomicBoolean warnedAboutMovesBeingCopies = new AtomicBoolean(false);
@@ -647,9 +655,15 @@ public final class SandboxHelpers {
 
                 process_path: while (true) {
                   if (--remaining_depth_count == 0) {
-                    logger.atWarning().log(
-                      "Giving up resolving External Source Artifact path `%s` at `%s`, too many levels of symlinks!", p, curr
+                    String msg = String.format(
+                      "Giving up resolving External Source Artifact path `%s` at `%s` (from: %s), too many levels of symlinks!",
+                      p, curr, inputArtifact.getArtifactOwner().getLabel()
                     );
+                    logger.atWarning().log("%s", msg);
+                    if (reporter != null) {
+                      reporter.handle(Event.warn(msg).withTag("unresolved-symlinks-in-external-source-artifact"));
+                    }
+
                     break; // TODO: should we remove/gate our additions to `externalSourceArtifactPaths` thus far?
                   }
 
