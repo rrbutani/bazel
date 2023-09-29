@@ -110,7 +110,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     LocalExecutionOptions options = cmdEnv.getOptions().getOptions(LocalExecutionOptions.class);
     ImmutableList<String> linuxSandboxArgv =
         LinuxSandboxCommandLineBuilder.commandLineBuilder(
-                linuxSandbox, ImmutableList.of("/bin/true"))
+                linuxSandbox, ImmutableList.of("/bin/true")) // TODO: nixos? (no /bin/true..)
             .setTimeout(options.getLocalSigkillGraceSeconds())
             .build();
     ImmutableMap<String, String> env = ImmutableMap.of();
@@ -543,6 +543,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
       }
     }
 
+    // TODO: should we validate more of the mounts?
     LinuxSandboxUtil.validateBindMounts(bindMounts);
     ImmutableList.Builder<BindMount> result = ImmutableList.builder();
 

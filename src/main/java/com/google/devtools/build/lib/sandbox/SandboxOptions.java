@@ -249,11 +249,16 @@ public class SandboxOptions extends OptionsBase {
       Path blockedPath = fs.getPath(path);
       try {
         inaccessiblePaths.add(blockedPath.resolveSymbolicLinks());
+        // TODO: do we also want to make the symlink itself inaccessible?
+        // ...
+        // I think so; see below
       } catch (IOException e) {
         // It's OK to block access to an invalid symlink. In this case we'll just make the symlink
         // itself inaccessible, instead of the target, though.
-        inaccessiblePaths.add(blockedPath);
       }
+      // always make the symlink itself inacessible as well
+      inaccessiblePaths.add(blockedPath);
+
     }
     return ImmutableSet.copyOf(inaccessiblePaths);
   }
