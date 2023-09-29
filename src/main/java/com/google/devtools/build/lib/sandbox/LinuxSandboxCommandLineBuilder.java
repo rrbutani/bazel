@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.devtools.build.lib.actions.ExecutionRequirements;
+import com.google.devtools.build.lib.actions.Artifact.SourceArtifact;
 import com.google.devtools.build.lib.vfs.Path;
 import com.google.devtools.build.lib.vfs.PathFragment;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -177,6 +178,8 @@ public class LinuxSandboxCommandLineBuilder {
   /**
    * Sets the paths of files to forcibly exclude from being bind-mounted into
    * the sandbox (a.k.a. hard exclude paths).
+   *
+   * See {@link SourceArtifact#getHardExcludes}.
    *
    * Can only be used when the Linux hermetic sandbox is enabled.
    */
