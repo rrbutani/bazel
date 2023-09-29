@@ -94,6 +94,8 @@ abstract class AbstractSandboxSpawnRunner implements SpawnRunner {
     ActionExecutionMetadata owner = spawn.getResourceOwner();
     context.report(SpawnSchedulingEvent.create(getName()));
 
+    SandboxedSpawn sandbox = null;
+
     try {
       try (SilentCloseable c = Profiler.instance().profile("context.prefetchInputs")) {
         context.prefetchInputsAndWait();
@@ -107,13 +109,18 @@ abstract class AbstractSandboxSpawnRunner implements SpawnRunner {
                   ? ResourcePriority.DYNAMIC_STANDALONE
                   : ResourcePriority.LOCAL)) {
         context.report(SpawnExecutingEvent.create(getName()));
-        SandboxedSpawn sandbox = prepareSpawn(spawn, context);
+        sandbox = prepareSpawn(spawn, context);
         return runSpawn(spawn, sandbox, context);
       }
     } catch (IOException e) {
+      String msg = String.format(
+        "I/O exception during sandboxed execution; invocation = %s",
+        sandbox == null ? "unknown" : sandbox.getArguments().toString()
+      );
+
       FailureDetail failureDetail =
           SandboxHelpers.createFailureDetail(
-              "I/O exception during sandboxed execution", Code.EXECUTION_IO_EXCEPTION);
+              msg, Code.EXECUTION_IO_EXCEPTION);
       throw new UserExecException(e, failureDetail);
     } catch (ForbiddenActionInputException e) {
       FailureDetail failureDetail =
