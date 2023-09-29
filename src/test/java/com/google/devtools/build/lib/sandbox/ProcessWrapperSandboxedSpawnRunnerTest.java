@@ -61,7 +61,7 @@ public final class ProcessWrapperSandboxedSpawnRunnerTest extends SandboxedSpawn
 
     ProcessWrapperSandboxedSpawnRunner runner =
         new ProcessWrapperSandboxedSpawnRunner(
-            new SandboxHelpers(),
+            new SandboxHelpers(commandEnvironment.getReporter()),
             commandEnvironment,
             sandboxBase,
             treeDeleter);
@@ -115,7 +115,7 @@ public final class ProcessWrapperSandboxedSpawnRunnerTest extends SandboxedSpawn
 
     ProcessWrapperSandboxedSpawnRunner runner =
         new ProcessWrapperSandboxedSpawnRunner(
-            new SandboxHelpers(),
+            new SandboxHelpers(commandEnvironment.getReporter()),
             commandEnvironment,
             sandboxBase,
             treeDeleter);
