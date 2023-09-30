@@ -402,6 +402,10 @@ mod utils {
     }
 }
 
+// actually nevermind; for splatted paths this will need to be suffixed too..
+//
+// we'll just use the path we build up as we do the walk
+/*
 #[derive(Debug)]
 struct MountTargetNode<'p> {
     // just for convenience so that we don't have to concat a bunch of strings
@@ -415,10 +419,161 @@ struct MountTargetNode<'p> {
     path: &'p CStr, // _destination_ path
     info: MountTargetNodeInfo<'p>,
 }
+*/
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MountTargetNode<'p> {
+    // directive to not mount in this path
+    Exclude,
+    // mount in this path; potentially using a different source path
+    //
+    // this may be a file or a directory
+    Include {
+        // only present if different than the mount path
+        source_path: Option<Cow<'p, CStrNewType>>,
+    },
+    // this entry only exists because something deeper wanted it
+    Neutral {
+        /// map from subpath of `path` (i.e. `Component::Normal`) to
+        /// `MountTargetNode`
+        // note: iteration order is non-deterministic...
+        //
+        // should be okay though
+        children: HashMap<&'p OsStr, MountTargetNode<'p>>,
+    }
+}
+
+// wrapper type so that you cannot modify the internals...
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MountTargetsMap<'p> {
+    root: MountTargetNode<'p>,
+}
+
+
+impl<'p> MountTargetsMap<'p> {
+    pub fn new() -> Self {
+        Self {
+            root: MountTargetNode::Neutral { children: HashMap::new() },
+        }
+    }
+}
 
 impl<'p> MountTargetsMap<'p> {
 
     // ## Pseudo code
+    /// entry merge: (prev, new)
+    ///   - neutral, neutral => okay: if the child is already there don't add
+    ///   - neutral, exclude:
+    ///     + i.e. we are excluding a directory for which there are already
+    ///       children in the map
+    ///     + we'd need to splat this exclude and apply it (potentially
+    ///       recursively)
+    ///   - neutral, include:
+    ///     + i.e. we are _including_ a directory for which there are already
+    ///       children in the map
+    ///     + need to splat this include and apply it
+    ///     + I think we can guarantee that we'll never hit this case (and the
+    ///       above) if we sort our list of exclude + include paths and call
+    ///       `push` on them in sorted order
+    ///       * this makes it so that children will always be added _after_
+    ///         their parent directory paths
+    ///     + I don't know if this is worth it though; I think it's still the
+    ///       same number of operations?
+    ///       * here's an example:
+    ///         ```markdown
+    ///         ops: include /foo, exclude /foo/bar/baz (where /foo/bar/quux and /foo/blue/blah) exist
+    ///
+    ///         sorted order:
+    ///           - include /foo
+    ///           - exclude /foo/bar/baz (/foo/)
+    ///             + whoops, /foo exists and is not a superset (we're an
+    ///               exclude): need to splat /foo
+    ///           - exclude /foo/bar/baz (/foo/bar/)
+    ///             + whoops: /foo/bar exists and is not a superset: splat
+    ///               /foo/bar
+    ///           - exclude /foo/bar/baz
+    ///
+    ///         backwards order:
+    ///           - exclude /foo/bar/baz (ok)
+    ///           - include /foo
+    ///             + whoops, need to splat /foo
+    ///           ...
+    ///           (we end up splatting /foo/bar as well)
+    ///         ```
+    ///      + actually never mind: the big difference is that if we go in order
+    ///        we can tell when a mount is elide-able (i.e. include below an
+    ///        include)
+    ///      + doing this the other way (telling if mounts beneath us are
+    ///        elidable if we are to add a parent path after its children have
+    ///        been added) requires that we recursively analyze every mount
+    ///        beneath us
+    ///        * we can save on the complexity by implementing this as replaying
+    ///          everything beneath us, recursively on top of the parent mount
+    ///          - but we this ends up happening a bunch or if the nesting is
+    ///            very deep this can get expensive
+    ///        * only upside I can come up with to going this route is that one
+    ///          way to implement this involves seeing if the children of a
+    ///          Neutral node are _covering_ for the parent and then rewriting
+    ///          the parent as a simple include/exclude (maybe)
+    ///          - this is surely not helpful for perf though; eliding the bind
+    ///            mount(s) will probably not pay for the stat syscalls and the
+    ///            extra compute
+    ///
+    ///   - include, neutral:
+    ///     + i.e. we have a dest path that's below an existing include
+    ///     + if the full path we're adding is ultimately an include *and* if:
+    ///       * the source path of this parent include and the source path of
+    ///         our full path are both `none` _or_
+    ///       * if the paths are both aligned (i.e. if `prev`'s source + the rel
+    ///         dest path of our remaining segments == our mount's src_path)
+    ///     + then it's safe to elide this mount:
+    ///       * we should make sure that the path exists though...
+    ///     + otherwise, we need to splat `include` and turn it into a `neutral`
+    ///       node and then continue
+    ///       * when splatting `include`, need to propagate `source_path` (with
+    ///         appends for the splatting)
+    ///   - include, exclude:
+    ///     + error, cannot include and exclude a path...
+    ///     + even if the include has a different source path, this is not
+    ///       something we can make sense of
+    ///       * the semantics of exclude paths is that they refer to destination
+    ///         paths
+    ///   - include, include:
+    ///     + if source path is the same, it's fine; warn about duplicate bind
+    ///       mounts, maybe
+    ///     + if not the same, error
+    ///
+    ///   - exclude, neutral:
+    ///     + i.e. we have a dest path that's below an existing exclude
+    ///     + if the full path we're adding is an exclude, this is okay, just do
+    ///       nothing
+    ///     + if the full path is an include...
+    ///       * I think we should error?
+    ///       * or maybe just warn and then drop the include
+    ///   - exclude, exclude:
+    ///     + this is okay, just a duplicate
+    ///   - exclude, include:
+    ///     + same as the stuff on `exclude, neutral` iff dest path: include
+    ///     + makes no sense, probably warn and drop the include
+    ///
+    /// ## Args
+    ///
+    /// If `new` is a [`MountTargetNode::Neutral`] its `children` must be empty;
+    /// we expect that you'll handle adding in the path segment for your next
+    /// node after invoking this function.
+    ///
+    /// To faciliate this, when given a "neutral" new node this function returns
+    /// the children map for the merged neutral node (unless the dest path for
+    /// the node has been determined as elide-able).
+    fn merge<'node, 'path>(
+        current: &'node mut MountTargetNode<'path>,
+        new: MountTargetNode<'path>,
+    ) {
+        use MountTargetNode::*;
+
+        match (current, new) {
+        }
+    }
 
     // must call in sorted order!
     pub fn insert(&mut self, dest_path: &'p CStr, src_path: Option<&'p CStr>, is_exclude: bool) {
