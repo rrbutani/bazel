@@ -943,10 +943,58 @@ impl fmt::Display for MountTargetsMap<'_> {
     }
 }
 
+mod tree_macros {
+    use std::{ffi::OsStr, borrow::Cow};
+
+    use crate::{MountTargetNode, utils::CStringGrowablePath};
+    pub use crate::dir;
+    #[macro_export]
+    macro_rules! dir {
+        ( $($path_seg:ident: $expr:expr),* $(,)? ) => {
+            $crate::MountTargetNode::Neutral {
+                children: ::std::collections::HashMap::from([$(
+                    (::std::borrow::Cow::Borrowed(::std::stringify!($path_seg).as_ref()), $expr),
+                )*])
+            }
+        };
+    }
+
+    pub use MountTargetNode::Exclude as Exc;
+    #[allow(bad_style)]
+    pub const Inc: MountTargetNode = MountTargetNode::Include { source_path: None };
+    #[allow(bad_style)]
+    pub fn IncWith(p: &'_ (impl AsRef<OsStr> + ?Sized)) -> MountTargetNode<'static> {
+        MountTargetNode::Include { source_path: Some(Cow::Owned(CStringGrowablePath::new(p.as_ref(), false))) }
+    }
+
+}
+
 
 #[no_mangle]
 extern "C" fn test() {
-    debug!("heyyyy")
+    debug!("heyyyy");
+
+    use tree_macros::*;
+    let mut map: MountTargetsMap = dir! {
+        foo: Exc,
+        bar: IncWith("/tmp/bar"),
+        baz: Inc,
+        quux: dir! {
+            blah: Exc,
+            blue: IncWith("/tmp/foo/bar"),
+            bleh: dir! { keep: Inc },
+            blee: Exc,
+        }
+    }.into();
+
+    debug(|out| {
+        writeln!(out, "mount map:\n{:#}\n", map).unwrap();
+
+        map.prune_excludes_with_callback(Some(|x: &CStr| eprintln!("excluding path: {}", x.display())));
+        writeln!(out, "mount map:\n{:#}\n", map).unwrap();
+    });
+
+    // panic!();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1000,3 +1048,77 @@ fn path_addition_scope() {
     drop(scope);
     assert_eq!("", base.as_c_str().to_string_lossy());
 }
+
+#[cfg(test)]
+mod exclude_pruning_tests {
+    use super::MountTargetsMap;
+    use crate::tree_macros::*;
+
+    #[track_caller]
+    fn exclude_test<'p>(source: impl Into<MountTargetsMap<'p>>, expected: impl Into<MountTargetsMap<'p>>) {
+        let source = source.into();
+        let expected = expected.into();
+
+        let mut got = source.clone();
+        got.prune_excludes();
+
+        assert_eq!(
+            expected, got,
+            "Expected pruning sources from:\n{s}\nTo produce:\n{e}\nBut got:\n{g}",
+            s = source,
+            e = expected,
+            g = got,
+        )
+    }
+
+    #[test]
+    fn exclude() {
+        let before = dir! {
+            foo: Exc,
+            bar: Inc,
+            baz: IncWith("/tmp/foo"),
+            quux: dir! {
+                blah: Exc,
+                blue: IncWith("/tmp/foo/bar"),
+                bleh: dir! { keep: Inc },
+                blee: Exc,
+            }
+        };
+        let after = dir! {
+            bar: Inc,
+            baz: IncWith("/tmp/foo"),
+            quux: dir! {
+                blue: IncWith("/tmp/foo/bar"),
+                bleh: dir! { keep: Inc },
+            }
+        };
+
+        exclude_test(before, after)
+    }
+
+    #[test]
+    fn exclude_transitive() {
+        let before = dir! {
+            foo: Exc,
+            bar: Inc,
+            baz: IncWith("/tmp/foo"),
+            quux: dir! {
+                blah: Exc,
+                blue: dir! {
+                    elide: Exc,
+                    skip: Exc,
+                    remove: Exc,
+                },
+                bleh: dir! { omit: Exc },
+                blee: Exc,
+            }
+        };
+        let after = dir! {
+            bar: Inc,
+            baz: IncWith("/tmp/foo"),
+        };
+
+        exclude_test(before, after)
+    }
+}
+
