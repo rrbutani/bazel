@@ -1099,6 +1099,57 @@ impl<'p> MountTargetsMap<'p> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Mount<'p> {
+    Include { dest: &'p CStr, explicit_src: Option<&'p CStr> },
+    HardExclude { dest: &'p CStr },
+}
+
+impl<'p> PartialOrd for Mount<'p> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        use Mount::*; use std::cmp::Ordering::*;
+        let (Include { dest, .. } | HardExclude { dest }) = self;
+        let (Include { dest: other_dest, .. } | HardExclude { dest: other_dest }) = other;
+
+        // first compare the dest paths:
+        match dest.partial_cmp(other_dest) {
+            Some(Equal) => {},
+            other => return other,
+        }
+
+        // then compare exclude vs. include; exclude is greater than include:
+        let is_exclude = matches!(self, HardExclude { .. });
+        let other_is_exclude = matches!(other, HardExclude { .. });
+        Some(match (is_exclude, other_is_exclude) {
+            // could do a tie-breaker on `other_dest` but not going to bother
+            (true, true) | (false, false) => Equal,
+            // exclude is greater than include (should come _afterwards_ when
+            // applying mounts)
+            (true, false) => Greater,
+            (false, true) => Less,
+        })
+    }
+}
+
+impl<'p> Ord for Mount<'p> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl<'p> MountTargetsMap<'p> {
+    pub fn insert_paths(&mut self, mounts: &mut [Mount<'p>]) {
+        mounts.sort_unstable();
+
+        for m in mounts {
+            match m {
+                Mount::Include { dest, explicit_src } => self.insert(dest, *explicit_src, false),
+                Mount::HardExclude { dest } => self.insert(dest, None, true),
+            }
+        }
+    }
+}
+
 impl<'p> MountTargetsMap<'p> {
     // Note: as a post-processing step we may want to do pruning of excludes?
     //
