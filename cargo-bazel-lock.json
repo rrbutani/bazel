@@ -1,5 +1,5 @@
 {
-  "checksum": "3cca28041fa38a0512eb33ba9141804ff90b0e4f8223e10d2c383ee6e424eda9",
+  "checksum": "b09a553d2c4794cd6af15d9f45a96970cda4738dc17860106d7ab8a97f2e8554",
   "crates": {
     "bitflags 2.4.0": {
       "name": "bitflags",
@@ -188,6 +188,8 @@
         "crate_features": {
           "common": [
             "default",
+            "dir",
+            "fs",
             "time"
           ],
           "selects": {}
