@@ -555,6 +555,118 @@ impl<'p> MountTargetsMap<'p> {
     ///   - exclude, include:
     ///     + same as the stuff on `exclude, neutral` iff dest path: include
     ///     + makes no sense, probably warn and drop the include
+    ///       * update: see the addendum below
+    ///
+    /// Addendums:
+    ///   - can we trigger the "duplicate include mount" warning with splats?
+    ///     + if so do want to not print the warning?
+    ///     + For cases like:
+    ///       ```text
+    ///       /foo
+    ///       /foo/bar (may cause /foo to be splat (if custom source?))
+    ///       /foo/baz (will now overlap with `/foo/baz` and trigger this warning..)
+    ///       ```
+    ///   - actually I think we have a bigger issue:
+    ///     + say you want to mount `/foo` except for `/foo/bar` which you want
+    ///       to mount from `/baz`
+    ///     + I don't think we have a way to express this currently..
+    ///       * doing: inc `/foo`, exc `/foo/bar`, inc `/foo/bar` from `/baz`
+    ///       * will get you an error (cannot include and exclude a path)
+    ///     + maybe to get around this we do allow includes to shadow excludes?
+    ///       * (and then sort our mounts accordingly to put excludes for a
+    ///          destination before includes)
+    ///       * TODO: how does this interact with splatting? (I think it's
+    ///         fine?)
+    ///
+    ///   - ... it's actually only for "not present in the source" mounts and
+    ///     excludes that you need to splat
+    ///     + i.e. if I have some `/foo/{bar,baz,...}` and I want to exclude
+    ///       just `/foo/bar` but I'm okay with `/foo/bar` being an empty
+    ///       directory, I don't need to splat `/foo`; I can just mount an empty
+    ///       dir over `/foo/bar`.
+    ///     + ditto with other bind mounts; so long as `/foo/<whatever>` exists
+    ///       I don't actually need to splat `/foo`
+    ///     + it's only when `/foo/<subdir>` doesn't exist (or is a file when I
+    ///       want to mount a directory or vice versa) that I need to splat
+    ///       `/foo`
+    ///     + ...
+    ///     + this derails our plans, significantly
+    ///     + ...
+    ///     + we can model "I can tolerate empty directory/file"-style excludes
+    ///       by modeling them as bind mounts with custom sources
+    ///       * this distinction can thus live entirely in the Bazel layer
+    ///       * or maybe a _little_ in this layer, we'd need to know whether to
+    ///         pick the empty file or dir to mount over the existing path...
+    ///     + so the major change is that we can "overlay" some kinds of mounts
+    ///       on includes:
+    ///       * mounts where the dest path already exists (need to inspect
+    ///         source path for this...)
+    ///         - unless the source of this mount is a symlink :(
+    ///           + ... unless we're on a new enough Linux machine where we can
+    ///             bind mount symlinks without resolving their source arg
+    ///             * also what about destination symlinks under this scheme...
+    ///               since we're mounting over files we did not create, this
+    ///               has the potential to create trouble; we really don't want
+    ///               to follow such symlinks
+    ///       * we can also still elide bind mounts that are redundant with the
+    ///         same rules
+    ///     + resolving splats actually doesn't get all that much more complex
+    ///     + if we go through with this I think we'd also want to adopt the
+    ///       "more specific path wins" rule; i.e. if you have an exclude for
+    ///       `/foo/bar` and then a mount for `/foo/bar/baz`, we're mounting
+    ///       `/foo/bar/baz`
+    ///       + the reason why this isn't totally nonsensensical is: suppose
+    ///         there was a mount for `/foo` and the `/foo/bar` exclude exists
+    ///         to splat that mount...
+    ///     + I definitely do not want to go this far but the rabbit-hole
+    ///       actually goes deeper still: say we have a "I can tolerate an empty
+    ///       directory" style exclude for `/foo/bar` in the above example and
+    ///       then say I have a bunch of bind mounts layered onto `/foo/bar/...`
+    ///       where the path doesn't exist on the source filesystem
+    ///       + under the scheme described above, we'd splat the `/foo/bar`
+    ///         mount (and also the `/foo` mount) so that we can make these
+    ///         directories
+    ///       + but actually, since we can control the "empty" directory we're
+    ///         mounting to `/foo/bar`, the optimal thing to do here would be to
+    ///         craft an dir to bind mount to `/foo/bar` that has the necessary
+    ///         empty dirs/files for our bind mounts...
+    ///         * this isn't as simple as just checking if the parent dir for
+    ///           mounts we're crafting is writable; the special case here is
+    ///           that it's a stand-in empty directory in our control
+    ///         * if we just did simple empty dir checks, we'd hit errors if the
+    ///           empty dir was bind mounted in two places where we had the same
+    ///           child mount and where one was a file and one was a
+    ///           directory...
+    ///         * we could mitigate against this by... making a unique empty
+    ///           directory to bind mount for each overlay-able dir
+    ///           - another pernicious perf tradeoff...
+    ///     + I'm not going to attempt to implement all the things described
+    ///       above... I think just exposing an "unchecked empty directory
+    ///       excludes" option that runs after all of this precise
+    ///       includes/excludes logic and blindly mounts empty dirs over the
+    ///       given paths will get us most of the benefits without making
+    ///       implementation and testing a nightmare
+    ///       + "unchecked empty directory excludes" with some caveats:
+    ///         * destination must already exist
+    ///         * no warnings on shadowing other bind mounts, even mounts to the
+    ///           very same path
+    ///         * if the destination exists and is a symlink, it's an error (on
+    ///           older Linux kernels our only way to keep from following the
+    ///           symlink is to splat (recursively if needed) the mounts leading
+    ///           to that directory until we have a mount permitting us to write
+    ///           and then to mount everything *but* that symlink in the
+    ///           directory — since we're not attempting to implement that,
+    ///           we'll just error)
+    ///       + or: for bind mounts beneath a bind mount:
+    ///         * if:
+    ///           - dest isn't a symlink
+    ///           - dest exists and the file/dir type matches
+    ///         * set it off to the side and apply it as a bind mount later?
+    ///         * update: no; this doesn't work because a more specific path can
+    ///           come along and require that we splat the layered bind mount...
+    ///       + yeah okay fine; I think the unchecked thing described above is a
+    ///         reasonable tradeoff
+    ///
     ///
     /// ## Args
     ///
