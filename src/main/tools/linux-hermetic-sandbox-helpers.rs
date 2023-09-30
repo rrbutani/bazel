@@ -407,3 +407,55 @@ mod utils {
 extern "C" fn test() {
     debug!("heyyyy")
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn path_addition_scope() {
+    // Everything in the C89 style comments (/* ... */) is a compile time error
+    // when uncommented.
+
+    use crate::utils::CStringGrowablePath;
+    let mut base = CStringGrowablePath::new("", false);
+    let mut scope = base.scoped();
+
+    let mut foo = scope.push("foo".as_ref());
+
+    // Can't do this! `foo` is live
+    /* base.push("oops".as_ref()); */
+    // Can't do this! `foo` is live
+    /* eprintln!("{}", base.as_c_str().display()); */
+
+    let mut bar = foo.push("bar".as_ref());
+
+    // Can't do this! `bar` is still live; the underlying buffer returned by
+    // `as_c_str` will contain extra path segments..
+    /* eprintln!("{}", foo.as_c_str().display()); */
+
+    let mut baz = bar.push("baz".as_ref());
+
+    // Works transitively; can't do this since `baz` borrows `bar` which borrows
+    // `foo` which borrows `scope` which borrows `base`:
+    /* bar.as_c_str(); */
+    /* foo.push("oops".as_ref()); */
+    /* scope.push("oops".as_ref()); */
+    /* base.as_c_str(); */
+
+    // Can use parents once children run out their scope or are dropped:
+    {
+        let quux = baz.push("quux".as_ref());
+        assert_eq!("/foo/bar/baz/quux", quux.as_c_str().to_string_lossy());
+    }
+
+    assert_eq!("/foo/bar/baz", baz.as_c_str().to_string_lossy());
+    drop(baz);
+
+    assert_eq!("/foo/bar", bar.as_c_str().to_string_lossy());
+    drop(bar);
+
+    assert_eq!("/foo", foo.as_c_str().to_string_lossy());
+    drop(foo);
+
+    drop(scope);
+    assert_eq!("", base.as_c_str().to_string_lossy());
+}
