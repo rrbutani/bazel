@@ -1,10 +1,32 @@
+extern crate nix; // to appease rust-analyzer
+
+use std::{
+    borrow::Cow,
+    collections::{HashMap, hash_map::Entry},
+    ffi::{CStr, OsStr},
+    fmt,
+    fs,
+    os::unix::prelude::OsStrExt,
+    path::{Path, Component, Components},
+    sync::atomic::{AtomicUsize, Ordering}, cmp,
+};
+
+use nix::{NixPath, dir, fcntl::OFlag, sys::stat::Mode};
+
+use crate::utils::{
+    CStrNewType, OsStrDisplayExt, cstring_as_path, CStringGrowablePath,
+    ScopedPathAddition, debug,
+};
 
 mod utils {
-    use std::fs::File;
-    use std::io::Write;
-    use std::os::fd::BorrowedFd;
-    use std::sync::OnceLock;
-    use std::panic::Location;
+    use std::{
+        fs::File,
+        fmt,
+        io::Write,
+        os::{fd::BorrowedFd, unix::prelude::OsStrExt},
+        sync::OnceLock,
+        panic::Location, ffi::{CStr, OsStr}, path::Path, borrow::Borrow, ops::Deref, mem,
+    };
 
     use nix::time::{self, ClockId};
 
@@ -13,7 +35,6 @@ mod utils {
         static global_debug: *mut libc::FILE;
     }
 
-    #[track_caller]
     pub fn if_debug(func: impl FnOnce()) {
         // We want to optimize for the common case (not running under debug
         // mode) so we do this check first (so that we can bail quicker).
@@ -25,7 +46,9 @@ mod utils {
     /// Supposed to mimic `DEBUG` from `./logging.h`.
     #[track_caller]
     #[cfg_attr(test, allow(unreachable_code))]
-    pub fn debug(func: impl FnOnce(&mut dyn std::io::Write)) { if_debug(move || {
+    pub fn debug(func: impl FnOnce(&mut dyn std::io::Write)) {
+        let loc = Location::caller();
+    if_debug(move || {
         #[cfg(test)]
         {
             // when running tests, include the debug output; put it on stderr:
@@ -35,7 +58,6 @@ mod utils {
             // the `libtest` stderr capture machinery
             let mut out = Vec::new();
             func(&mut out);
-            let loc = Location::caller();
             eprintln!(
                 "debug from {file}:{line}:\n  {msg}",
                 file = loc.file(), line = loc.line(),
@@ -77,7 +99,6 @@ mod utils {
         // Timestamp and file location; matches `DEBUG`:
         {
             let curr = time::clock_gettime(ClockId::CLOCK_REALTIME).unwrap();
-            let loc = Location::caller();
             write!(
                 out, "{}.{:09}: {file}:{line}: ",
                 curr.tv_sec(), curr.tv_nsec(),
@@ -95,6 +116,288 @@ mod utils {
             $crate::utils::debug(|o| {
                 writeln!(o, $($tt)*).unwrap()
             })
+        }
+    }
+
+    // zero copy
+    pub fn cstring_as_path(path: &CStr) -> &Path {
+        OsStr::from_bytes(path.to_bytes()).as_ref()
+    }
+
+    // the Debug impl for `OsStr` types quotes the output...
+    //
+    // calling `to_str` is expensive (`O(len)` for UTF-8 validation) but it is
+    // okay: we only expect to use this for debugging
+    pub struct OsStrDisplay<'o>(&'o OsStr);
+    impl fmt::Display for OsStrDisplay<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            if let Some(utf8) = self.0.to_str() {
+                f.write_str(utf8)
+            } else {
+                write!(f, "{:?}", self.0)
+            }
+        }
+    }
+
+    pub trait OsStrDisplayExt { fn display(&self) -> OsStrDisplay<'_>; }
+    impl OsStrDisplayExt for OsStr {
+        fn display(&self) -> OsStrDisplay<'_> { OsStrDisplay(self) }
+    }
+    impl OsStrDisplayExt for CStr {
+        fn display(&self) -> OsStrDisplay<'_> {
+            OsStrDisplay(OsStr::from_bytes(self.to_bytes()))
+        }
+    }
+
+    /// To form the destination path of the bind mounts, we need to prepend the
+    /// sandbox base.
+    ///
+    /// This means allocating and copying. This is in contrast to the source
+    /// path of the bind mounts for which we can (generally -- splatting is the
+    /// exception) simply pass the [`CStr`] we received straight through to the
+    /// mount syscall.
+    ///
+    /// This type is aimed at amortizing the cost of these allocations/copies by
+    /// reusing a shared buffer and taking advantage of the fact that we walk
+    /// the bind mount target directory structure with DFS, allowing us to push
+    /// and pop path segments as we go.
+    ///
+    /// Functionally this type is a little like a [`PathBuf`] that you can get a
+    /// [`CStr`] out of.
+    ///
+    /// NOTE: This type is very much Unix specific and makes no attempt to
+    /// accomodate Windows paths.
+    pub struct CStringGrowablePath {
+        allocation: Vec<u8>,
+        segment_lengths: Vec<usize>,
+    }
+    impl fmt::Debug for CStringGrowablePath {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_tuple("CStringGrowablePath")
+                .field(&self.as_c_str())
+                .finish()
+        }
+    }
+
+    impl CStringGrowablePath {
+        // default allocation size hint:
+        const MAX_EXPECTED_PATH_LEN_IN_BYTES: usize = 1024;
+
+        fn ensure_null_termination(&mut self) {
+            match self.allocation.spare_capacity_mut() {
+                [first, ..] => {
+                    first.write(b'\0');
+                },
+                _ => {
+                    // need to grow!
+                    self.allocation.reserve(1);
+                    self.ensure_null_termination()
+                }
+            }
+        }
+
+        /// Assumes base is an absolute path that:
+        ///  - begins with `/`
+        ///  - contains no `.`, `..`
+        ///  - does *not* end with `/`
+        ///  - contains no NUL bytes
+        ///
+        /// Note that empty strings are allowed.
+        ///
+        /// `intend_to_extend`:
+        ///  - we have two main use cases for this type:
+        ///    + destination paths that we construct as we walk the mount map
+        ///      during _application_
+        ///    + representing explicit source paths (i.e. bind mounts where
+        ///      `dest != source`) when the mount they belong to is ["splatted"]
+        ///      — in this case we need to append segments onto the original
+        ///        [`CStr`] source path that we are given
+        ///
+        /// ["splatted"]: TODO
+        pub fn new(base: impl AsRef<OsStr>, intend_to_extend: bool) -> Self {
+            let base: &OsStr = base.as_ref();
+
+            if !base.as_bytes().is_empty() {
+                debug_assert_eq!(base.as_bytes()[0], b'/');
+                debug_assert_ne!(base.as_bytes().last().unwrap(), &b'/');
+            }
+
+            let mut allocation = Vec::with_capacity(
+                if intend_to_extend { Self::MAX_EXPECTED_PATH_LEN_IN_BYTES }
+                else { base.len() * 2 }
+            );
+            allocation.extend(base.as_bytes());
+
+            Self {
+                allocation,
+                // Note: elements of base don't contribute to segments! can't
+                // pop them
+                //
+                // Note: we start with a zero sized allocation
+                segment_lengths: Vec::with_capacity(0),
+            }
+        }
+
+        // assumes segment does not start with a path separator and does not
+        // contain `.`, `..`, or more than one path segment, and is not the
+        // empty string, and does not contain NUL bytes
+        pub fn push<'seg>(&mut self, segment: &'seg OsStr) {
+            self.push_untracked(segment);
+            self.segment_lengths.push(segment.as_bytes().len());
+        }
+
+        // Like `push` (requires a path segment, etc.) but does not register a
+        // new pop-able entry with the growable path.
+        //
+        // `pop` will return `(the previous segment) + "/" + segment`
+        pub fn extend_last(&mut self, segment: &OsStr) {
+            self.push_untracked(segment)
+        }
+
+        // for [`ScopedPathAddition`]; cheaper since we don't need to
+        // use `update_segment_lengths`
+        fn push_untracked<'seg>(&mut self, segment: &'seg OsStr) {
+            self.allocation.push(b'/');
+
+            let seg = segment.as_bytes();
+            self.allocation.extend(seg);
+
+            // ideally we'd call this just in `as_c_str` but we want that method
+            // to only take `&self`...
+            self.ensure_null_termination();
+        }
+
+        // panics if there are no segments to pop
+        pub fn pop(&mut self) {
+            let last_len = self.segment_lengths.pop().unwrap();
+            self.pop_untracked(last_len)
+        }
+
+        // for [`ScopedPathAddition`]; cheaper since we don't need to
+        // use `update_segment_lengths`
+        //
+        // len is in *bytes*
+        fn pop_untracked<'seg>(&mut self, last_segment_length: usize) {
+            let last_segment_length = last_segment_length + 1; // path separator
+
+            self.allocation.truncate(self.allocation.len() - last_segment_length);
+
+            // ideally we'd call this just in `as_c_str` but we want that method
+            // to only take `&self`...
+            self.ensure_null_termination();
+        }
+
+
+        pub fn as_c_str(&self) -> &CStr {
+            let allocation = self.allocation.as_slice();
+            // SAFETY: `ensure_null_termination` makes this safe.
+            let allocation_with_nul = unsafe {
+                std::slice::from_raw_parts(allocation.as_ptr(), allocation.len() + 1)
+            };
+
+            // SAFETY: we can be sure that the slice is terminated by a nul but
+            // we actually cannot be sure that safe usage of the API of this
+            // type will not introduce other nuls into `allocation`...
+            //
+            // ultimately, I think we are okay with this, for now; we can be
+            // reasonably certain that we will not run into this in practice
+            // (these paths -- when not using param files -- come from command
+            // line arguments which cannot include nuls; the conversion to
+            // `std::string` on the C++ side will catch this anyways)
+            unsafe {
+                // Note: we construct a slice first and use this function
+                // instead of using `from_ptr` because `from_ptr` invokes
+                // `strlen`. We already know the length of the string so this is
+                // unnecessary.
+                CStr::from_bytes_with_nul_unchecked(allocation_with_nul)
+            }
+        }
+    }
+
+    /// Helper for [`CStringGrowablePath`] that associates a path segment added
+    /// to [`CStringGrowablePath`] with a scope.
+    ///
+    /// This is useful for users that traverse paths recursively and wish to
+    /// record the current path as they do so.
+    ///
+    /// This type essentially just makes sure you don't forget to call `pop`
+    /// (and prevents you from calling `push` without constructing an instance
+    /// of this type).
+    ///
+    /// Use [`CStringGrowablePath::scoped`] to construct an instance of this.
+    pub struct ScopedPathAddition<'c, 'a> {
+        inner: &'c mut CStringGrowablePath,
+        addition: Option<&'a OsStr>,
+    }
+    impl<'c, 'a> Drop for ScopedPathAddition<'c, 'a> {
+        fn drop(&mut self) {
+            if let Some(last_seg) = self.addition {
+                self.inner.pop_untracked(last_seg.as_bytes().len())
+            }
+        }
+    }
+    impl<'c, 'a> ScopedPathAddition<'c, 'a> {
+        pub fn push<'addition, 'curr>(&'curr mut self, segment: &'addition OsStr) -> ScopedPathAddition<'curr, 'addition> {
+            // since we're holding a mutable reference we can be sure no other
+            // type will add their own segments in the interim
+            //
+            // the new addition we're making must be dropped before we are, thus
+            // requiring that any new segments added after this one via
+            // instances of this type are removed by the type our destructor
+            // runs
+            self.inner.push_untracked(segment);
+            ScopedPathAddition { inner: self.inner, addition: Some(segment) }
+        }
+
+        pub fn as_c_str(&self) -> &CStr {
+            self.inner.as_c_str()
+        }
+    }
+
+    impl CStringGrowablePath {
+        pub fn scoped<'c>(&'c mut self) -> ScopedPathAddition<'c, '_> {
+            ScopedPathAddition { inner: self, addition: None }
+        }
+    }
+
+    #[repr(transparent)]
+    #[derive(PartialEq, Eq)]
+    pub struct CStrNewType(CStr);
+    impl<'c> From<&'c CStr> for &'c CStrNewType {
+        fn from(value: &'c CStr) -> Self {
+            // SAFETY: repr(transparent)
+            unsafe { mem::transmute(value) }
+        }
+    }
+    impl Deref for CStrNewType {
+        type Target = CStr;
+
+        fn deref(&self) -> &Self::Target {
+            // SAFETY: repr(transparent)
+            unsafe { mem::transmute(self) }
+        }
+    }
+    impl fmt::Debug for CStrNewType {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            CStr::fmt(self, f)
+        }
+    }
+
+    impl Borrow<CStr> for CStringGrowablePath {
+        fn borrow(&self) -> &CStr { self.as_c_str() }
+    }
+    impl Borrow<CStrNewType> for CStringGrowablePath {
+        fn borrow(&self) -> &CStrNewType {
+            (self.as_c_str()).into()
+        }
+    }
+
+    // so that we can use `Cow` on `CStrNewType`
+    impl ToOwned for CStrNewType {
+        type Owned = CStringGrowablePath;
+
+        fn to_owned(&self) -> Self::Owned {
+            CStringGrowablePath::new(cstring_as_path(self), false)
         }
     }
 }
