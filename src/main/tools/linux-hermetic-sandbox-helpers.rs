@@ -439,7 +439,7 @@ pub enum MountTargetNode<'p> {
         // note: iteration order is non-deterministic...
         //
         // should be okay though
-        children: HashMap<&'p OsStr, MountTargetNode<'p>>,
+        children: HashMap<Cow<'p, OsStr>, MountTargetNode<'p>>,
     }
 }
 
@@ -447,6 +447,12 @@ pub enum MountTargetNode<'p> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MountTargetsMap<'p> {
     root: MountTargetNode<'p>,
+
+    // really we should use this:
+    // root_dir: HashMap<Cow<'p, OsStr>, MountTargetNode<'p>>,
+    //
+    // but having root be a node (that actually is always a neutral node)
+    // makes some of the recursion in places a little easier..
 }
 
 impl<'p> From<MountTargetNode<'p>> for MountTargetsMap<'p> {
@@ -683,17 +689,332 @@ impl<'p> MountTargetsMap<'p> {
     /// the children map for the merged neutral node (unless the dest path for
     /// the node has been determined as elide-able).
     fn merge<'node, 'path>(
+        full_dest_path: &'_ Path, // for debugging and splatting
+        remaining_components_from_full_dest_path: &'_ Path,
+        full_dest_node_is_exclude: bool,
+        full_dest_custom_source_path: Option<&'path Path>,
         current: &'node mut MountTargetNode<'path>,
         new: MountTargetNode<'path>,
-    ) {
+    ) -> Option<&'node mut HashMap<Cow<'path, OsStr>, MountTargetNode<'path>>> {
         use MountTargetNode::*;
+        if cfg!(debug_assertions) {
+            match &new {
+                Exclude => debug_assert_eq!(full_dest_node_is_exclude, true),
+                Include { .. } => debug_assert_eq!(full_dest_node_is_exclude, false),
+                Neutral { children } => debug_assert_eq!(children.len(), 0, "should add children of `new` after merge"),
+            }
+
+            if let Exclude | Include { .. } = new {
+                assert!(remaining_components_from_full_dest_path.is_empty())
+            }
+
+            if full_dest_custom_source_path.is_some() {
+                assert!(!full_dest_node_is_exclude);
+            }
+
+            assert!(full_dest_path.ends_with(remaining_components_from_full_dest_path));
+        }
+        let kind = if full_dest_node_is_exclude { "exclude" } else { "include" };
+        let curr_path: &Path = {
+            let full_bytes = full_dest_path.as_os_str().as_bytes();
+            let rest_bytes = remaining_components_from_full_dest_path.as_os_str().as_bytes();
+            let mut bytes = &full_bytes[0..(full_bytes.len() - rest_bytes.len())];
+
+            debug_assert!(bytes.len() > 1); // shouldn't get `curr = /`
+
+            // final nodes will not have a trailing `/` which is why we need this check
+            if bytes.last() == Some(&b'/') {
+                bytes = &bytes[0..(bytes.len() - 1)];
+            }
+            OsStr::from_bytes(bytes).as_ref()
+        };
 
         match (current, new) {
+            (Neutral { children }, Neutral { .. }) => Some(&mut *children),
+            (curr @ Neutral { .. }, new @ (Exclude | Include { .. })) => {
+                panic!(
+                    "You are adding a path that's _shorter_ (a prefix) of an \
+                    existing path, this is not allowed. Sorting paths prior to \
+                    inserting into the map should make this impossible. \
+                    At, curr: {:?} (path = `{}`), new: {:?} (for destination path: {} ({}))",
+                    curr, curr_path.display(), new, full_dest_path.display(), kind
+                )
+            },
+
+            // NOTE: in the context of a splat (i.e. `inc: /foo` followed by
+            // `exc: /foo/bar`) we actually *do* need to allow this... (we'll
+            // splat `/foo` and then go and try to replace the `inc: /foo/bar`
+            // with `exc: /foo/bar).
+            //
+            // the rule may need to move towards "the more specific thing wins"
+            //
+            // re this "shadowing": we could try to distinguish between
+            // splatting causing this vs. actually contradictory mounts being
+            // specified (i.e. exclude and include of the same path) but I think
+            // it isn't worth it
+            (inc @ Include { .. }, Exclude) => {
+                let Include { ref source_path } = inc else { unreachable!() };
+                debug!("warn: shadowing include at `{}` (custom source: {:?}) with exclude", full_dest_path.display(), source_path);
+                *inc = Exclude;
+                None
+            },
+            (Include { source_path: orig_source }, Include { source_path: new_source }) => if *orig_source != new_source {
+                panic!(
+                    "Conflicting bind mounts at path `{}`: \
+                    \n  existing custom source: {:?} \
+                    \n  new custom source: {:?} \
+                    ",
+                    full_dest_path.display(), orig_source, new_source,
+                )
+            } else {
+                // duplicate but that's okay
+                debug!("warn: got duplicate bind mount for `{}` (with custom source {:?})", full_dest_path.display(), orig_source);
+                None
+            }
+
+            // See above; we can run into this case when splatting: i.e.
+            // `inc: /foo` then `exc: /foo/bar` followed by `inc: /foo/bar/baz`.
+            //
+            // (the `inc: /foo` isn't necessary for us to run into this case but
+            // it provides a realistic example of why we might end up with an
+            // exclude of an ancestor (`/foo/bar`) of an include
+            // (`/foo/bar/baz`))
+            (exc @ Exclude, inc @ Include { .. }) => {
+                let Include { ref source_path } = inc else { unreachable!() };
+                debug!("warn: shadowing exclude at `{}` with bind mount (custom source: {:?})", full_dest_path.display(), source_path);
+                *exc = inc;
+                None
+            }
+            (Exclude, Exclude) => {
+                // duplicate but that's fine
+                debug!("warn: got duplicate exclude for `{}`", full_dest_path.display());
+                None
+            }
+
+            // now the hard cases:
+            (inc @ Include { .. }, Neutral { .. }) => {
+                let Include { ref source_path } = inc else { unreachable!() };
+                // i.e.: dest path that's below an existing include
+                //
+                // first see if we can elide this dest path's mount:
+                let can_elide = (|| {
+                    if full_dest_node_is_exclude { return false }
+
+                    match (source_path, full_dest_custom_source_path) {
+                        // no need to check anything
+                        (None, None) => true,
+                        // Need to check if the custom source are aligned; i.e.:
+                        // `this + (rel dest path of the new node to this)` ==
+                        // `child_source`
+                        //
+                        // where "rel dest path of the new node" is the
+                        // remaining path components of the path being inserted
+                        // into the map
+                        (Some(this), Some(child_source)) => {
+                            let base = cstring_as_path(this.as_ref());
+                            let rest = remaining_components_from_full_dest_path;
+                            debug_assert!(remaining_components_from_full_dest_path.is_relative());
+
+                            let this = base.components().chain(rest.components());
+                            this.eq(child_source.components())
+                        },
+
+                        // the effective source for the "child" mount will only
+                        // match the current mount if the current mount's
+                        // explicit source is actually redundant...
+                        (Some(this), None) => {
+                            if cstring_as_path(this.as_ref()) == curr_path {
+                                debug_assert_eq!(full_dest_path, curr_path);
+                                debug!(
+                                    "redundant explicit source for bind mount at {}",
+                                    full_dest_path.display(),
+                                );
+
+                                true
+                            } else {
+                                false
+                            }
+                        },
+
+                        // same as above but if the child's explicit source is
+                        // redundant:
+                        (None, Some(child_source)) => {
+                            if full_dest_path == child_source {
+                                debug!(
+                                    "redundant explicit source for bind mount at {}",
+                                    full_dest_path.display(),
+                                );
+
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    }
+                })();
+
+                if can_elide {
+                    // check if the source path exists...
+                    //
+                    // then return None
+                    utils::if_debug(|| {
+                        let child_include_mount_source_path = if let Some(explicit_source) = full_dest_custom_source_path {
+                            explicit_source
+                        } else {
+                            // should be the same as: curr + rest
+                            full_dest_path
+                        };
+
+                        if !child_include_mount_source_path.exists() {
+                            debug!(
+                                "warn: bind mount at `{}` (custom source: {:?}) has a non-existent source!",
+                                full_dest_path.display(), full_dest_custom_source_path,
+                            )
+                        }
+                    });
+
+                    None
+                } else {
+                    // splat current and then return the children of the new
+                    // Neutral node
+                    debug!(
+                        "splatting bind mount at {} (source: {:?}) to accomodate {} mount at {}",
+                        curr_path.display(), full_dest_custom_source_path, kind,
+                        full_dest_path.display(),
+                    );
+
+                    Some(MountTargetsMap::splat(inc, curr_path))
+                }
+            }
+            (exc @ Exclude, Neutral { .. }) => {
+                // i.e.: dest path that's below an existing exclude
+                //
+                // if the full dest node is an exclude we can safely elide this
+                // exclude
+                let can_elide = full_dest_node_is_exclude;
+
+                if can_elide {
+                    // check if the exclude exists? nah, it's fine
+                    None
+                } else {
+                    // splat current exclude and then return the children of the
+                    // new Neutral node
+                    debug!(
+                        "splatting exclude at {} to accomodate {} mount at {}",
+                        curr_path.display(), kind, full_dest_path.display(),
+                    );
+                    Some(MountTargetsMap::splat(exc, curr_path))
+                }
+            }
         }
     }
 
     // must call in sorted order!
     pub fn insert(&mut self, dest_path: &'p CStr, src_path: Option<&'p CStr>, is_exclude: bool) {
+        // walk from root using dest path
+        //   - insert neutral at all parent levels, insert include|exclude at last level
+
+        // entry merge (see above)
+
+        // note: sort mounts lexicographically by dest? and then by exclude > include (i.e. excludes after includes)
+        //   - handled by `insert_paths`
+        // note: assert path is absolute
+
+        let dest_path = cstring_as_path(dest_path);
+        debug_assert!(dest_path.is_absolute());
+
+        let MountTargetNode::Neutral { children: root_dir } = &mut self.root else { unreachable!() };
+        put(dest_path, root_dir, dest_path, src_path, is_exclude);
+
+        fn put<'p>(
+            full_dest_path: &Path, // for debugging and splatting
+            parent_dir: &mut HashMap<Cow<'p, OsStr>, MountTargetNode<'p>>,
+            relative_dest_path: &'p Path,
+            src_path: Option<&'p CStr>,
+            is_exclude: bool,
+        ) {
+            let (segment, rest) = {
+                fn get_next_seg<'p>(it: &mut Components<'p>) -> &'p OsStr {
+                    use Component::*;
+                    match it.next().expect("non-empty dest path") {
+                        Prefix(_) => unreachable!("windows?"),
+                        RootDir => {
+                            if it.as_path().is_empty() {
+                                panic!("cannot mount the root path");
+                            }
+
+                            // skipping `/`:
+                            get_next_seg(it)
+                        },
+                        CurDir | ParentDir => panic!("no `..` or `.` in destination paths please"),
+                        Normal(seg) => seg,
+                    }
+                }
+
+                let mut it = relative_dest_path.components();
+                let seg = get_next_seg(&mut it);
+
+                (seg, it.as_path())
+            };
+
+            let new_node = if NixPath::is_empty(rest) {
+                // If this is the last path segment, add an include/exclude:
+                if is_exclude {
+                    // icky but fine for now
+                    debug_assert!(src_path.is_none(), "excludes cannot have a custom source path");
+                    MountTargetNode::Exclude
+                } else {
+                    MountTargetNode::Include { source_path: src_path.map(<&CStrNewType>::from).map(Cow::Borrowed) }
+                }
+            } else {
+                // Otherwise it's a neutral node that we need:
+                //
+                // note that we do not insert any nodes in this hashmap yet --
+                // we don't want to bother doing an allocation. we're probably
+                // not actually going to use this HashMap for anything; it's
+                // likely we're going to merge with another `Neutral` node that
+                // already has it's own (non-empty) hashmap.
+                MountTargetNode::Neutral { children: HashMap::new() }
+            };
+
+            // insert node, merging nodes if needed:
+            let children_dir: Option<&mut HashMap<_, _>> = match parent_dir.entry(Cow::Borrowed(segment)) {
+                Entry::Occupied(curr) => MountTargetsMap::<'_>::merge(
+                    full_dest_path,
+                    rest,
+                    is_exclude,
+                    src_path.map(cstring_as_path),
+                    curr.into_mut(),
+                    new_node,
+                ),
+                Entry::Vacant(slot) => {
+                    match slot.insert(new_node) {
+                        MountTargetNode::Neutral { children } => Some(children),
+                        _ => None,
+                    }
+                },
+            };
+            // let children_map: Option<&mut HashMap<_, _>> = MountTargetsMap::<'_>::merge(
+            //     full_dest_path,
+            //     rest,
+            //     is_exclude,
+            //     src_path.map(|c| cstring_as_path(c)),
+            //     node,
+            //     new_node,
+            // );
+
+            // handle rest, if not empty (and if this mount wasn't elided):
+            if let Some(children_dir) = children_dir {
+                // // insert a replace-able node (i.e. neutral with no children)
+                // // if nothing is already present:
+                // let next_node = children_map
+                //     .entry(Cow::Borrowed(segment))
+                //     .or_insert_with(|| MountTargetNode::Neutral { children: HashMap::new() });
+
+                // note that this is tail-recursive
+                put(full_dest_path, children_dir, rest, src_path, is_exclude)
+            }
+        }
     }
 }
 
