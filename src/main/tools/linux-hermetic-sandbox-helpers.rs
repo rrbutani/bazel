@@ -402,6 +402,110 @@ mod utils {
     }
 }
 
+#[derive(Debug)]
+struct MountTargetNode<'p> {
+    // just for convenience so that we don't have to concat a bunch of strings
+    // and walk the tree to get a c-style string for this mount's source path
+    // (in the event that the source path == the dest path; we have to allocate
+    // for the dest path regardless because we prefix it with the sandbox base)
+    //
+    // `path` should be consistent with the keys of `Neutral.children` that led
+    // to this node
+    //
+    path: &'p CStr, // _destination_ path
+    info: MountTargetNodeInfo<'p>,
+}
+
+impl<'p> MountTargetsMap<'p> {
+
+    // ## Pseudo code
+
+    // must call in sorted order!
+    pub fn insert(&mut self, dest_path: &'p CStr, src_path: Option<&'p CStr>, is_exclude: bool) {
+    }
+}
+
+impl<'p> MountTargetsMap<'p> {
+    // note: time of check time of use bugs; we offer no guarantees about this
+    // (we assume no mutation of the directory structure of the mounts while
+    // we're setting up the sandbox)
+    //
+    // ---
+    //
+    // note: what if the dest is a symlink/is beneath a symlink?
+    //
+    // for now we won't "do the right thing" (i.e. splat) here; we'll assume
+    // that this is handled by Bazel when it assembles the list of mounts
+    //
+    // we will warn in debug mode though (TODO!)
+    #[allow(unused)]
+    pub fn apply(self, sandbox_base: &Path) {
+        // c string conversions necessary for passing the mount destination path
+        // to syscalls (we need to prepend the sandbox base path)
+        let mut dest_path = CStringGrowablePath::new(sandbox_base, true);
+
+        fn handle(node: &MountTargetNode, mut dest_path: ScopedPathAddition<'_, '_>) {
+            use MountTargetNode::*;
+            match &node {
+                Exclude => { /* nothing to do */ },
+                Include { source_path } => {
+                    let source = source_path.as_deref().map(|x| x.as_ref()).unwrap_or_else(|| dest_path.as_c_str());
+                    let source = cstring_as_path(source);
+
+                    fn stat(x: &Path) -> Option<()> { todo!() }
+
+                    // debug check: if the parent of the source path has a
+                    // symlink anywhere, we've elided a level of symlinks; warn
+
+                    match stat(source).unwrap() { // panic if source doesn't exist!
+                        is_dir => {
+                            // mkdir (should not already exist; just allow it if it already exists to accomodate dirty sandbox bases...)
+                            // mount
+                        },
+                        is_file => {
+                            // touch (or rather hardlink the empty file?) | should not already exist
+                            // mount
+                        }
+                        is_symlink => {
+                            // if we support MS_NOSYMFOLLOW?
+                            //   + touch empty file (should not exist!)
+                            //   + mount
+                            //   + ... actually, let's maybe not even bother with this
+                            //     - not sure how to reliably check for `MS_NOSYMFOLLOW` at runtime and I don't know that this would be faster anyways
+                            // else:
+                            //   + make symlink file with same dest (actually.. copy so we don't need another syscall to read the target of the symlink)
+                            //     * also preserves relative/absolute symlink
+                            //   + don't check if dest exists or not
+                            //   + make readonly
+                        }
+                    }
+                },
+                Neutral { children } => {
+                    // assert that children is never empty; can't have a neutral
+                    // node otherwise.. (todo: what about the root node?)
+                    // yeah okay, don't bother
+
+                    for (segment, child) in children {
+                        let dest_path = dest_path.push(segment);
+                        handle(child, dest_path)
+                    }
+
+                    // push
+                    // mkdir sandbox_base + node.path (ensure dest does not exist / is a dir?)
+                    //  - ideally we'd check that the dest is not a mountpoint
+                    //    but that seems expensive..
+                    //  - should *not* also assert that node.path is a directory
+                    //    because the child(ren) mounts that resulted in this
+                    //    node existing may all have sources that don't contain
+                    //    `node.path`
+                    // run `handle` for each child
+                }
+            }
+        }
+    }
+}
+
+
 
 #[no_mangle]
 extern "C" fn test() {
