@@ -449,6 +449,11 @@ pub struct MountTargetsMap<'p> {
     root: MountTargetNode<'p>,
 }
 
+impl<'p> From<MountTargetNode<'p>> for MountTargetsMap<'p> {
+    fn from(root: MountTargetNode<'p>) -> Self {
+        MountTargetsMap { root }
+    }
+}
 
 impl<'p> MountTargetsMap<'p> {
     pub fn new() -> Self {
@@ -772,6 +777,108 @@ impl<'p> MountTargetsMap<'p> {
     }
 }
 
+
+// tree style output
+impl fmt::Display for MountTargetsMap<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const RESET: &str = "\x1b[0m";
+        const BOLD: &str = "\x1b[1m";
+        const ITALICS: &str = "\x1b[3m";
+        const RED: &str = "\x1b[31m";
+        const BLUE: &str = "\x1b[34m";
+        const PURPLE: &str = "\x1b[35m";
+
+        fn print_indents(f: &mut fmt::Formatter<'_>, indents: &[bool]) -> fmt::Result {
+            let Some((&last, indents)) = indents.split_last() else {
+                return Ok(()) // nothing to do if `indents` is empty
+            };
+            for &i in indents {
+                write!(f, "{}", if i { "    " } else { "│   " })?;
+            }
+
+            write!(f, "{}", if last { "└──" } else { "├──" })
+        }
+
+        // `indents` indicates whether we've hit the last element for each
+        // indent level
+        fn print<'p, 'parent_scope, 'curr_scope>(
+            f: &mut fmt::Formatter<'_>,
+            node: &MountTargetNode<'p>,
+            seg: &'p OsStr,
+            indents: &mut Vec<bool>,
+            dest_path: &'curr_scope mut ScopedPathAddition<'parent_scope, 'parent_scope>,
+        ) -> fmt::Result {
+            use MountTargetNode::*;
+
+            let mut dest_path = dest_path.push(seg);
+            let dest_path = &mut dest_path;
+
+            print_indents(f, &indents)?;
+            match &node {
+                Exclude => writeln!(f, "{BOLD}{RED}{}{RESET} (excluded)", seg.display()),
+                Include { source_path } => {
+                    let source = if let Some(custom_source_path) = source_path {
+                        custom_source_path.as_ref()
+                    } else {
+                        dest_path.as_c_str()
+                    };
+                    let source = cstring_as_path(source);
+                    let symlink = fs::read_link(source);
+
+                    let color = if symlink.is_ok() { PURPLE } else { RESET };
+                    write!(f, "{color}{}{RESET}", seg.display())?;
+
+                    if let Ok(symlink_dest) = symlink {
+                        write!(f, " -> {ITALICS}{}{RESET}", symlink_dest.display())?;
+                    }
+
+                    if let Some(different_source) = source_path {
+                        write!(f, " (from: {BOLD}{}{RESET})", different_source.display())?;
+                    }
+
+                    writeln!(f)
+                }
+                Neutral { children } => {
+                    writeln!(f, "{BOLD}{BLUE}{}{RESET}", seg.display())?;
+                    indents.push(false);
+
+                    // make this a knob?
+                    //
+                    // actually: we don't really care about perf here; I think
+                    // this doesn't have to be configurable.
+                    let print_in_deterministic_order = true;
+                    let sorted_children;
+                    let it: Box<dyn Iterator<Item = _>> = if print_in_deterministic_order {
+                        let mut vec = children.iter().collect::<Vec<_>>();
+                        vec.sort_by(|(a, _), (b, _)| Ord::cmp(a, b));
+
+                        sorted_children = vec;
+                        Box::new(sorted_children.into_iter())
+                    } else {
+                        Box::new(children.iter())
+                    };
+
+                    let mut it = it.peekable();
+                    while let Some((seg, node)) = it.next() {
+                        // Once we've hit the end of the list, update `indents`
+                        // for this level:
+                        if it.peek().is_none() { *indents.last_mut().unwrap() = true; }
+
+                        print(f, node, seg, indents, dest_path)?
+                    }
+
+                    indents.pop();
+                    Ok(())
+                }
+            }
+        }
+
+        let mut indents = Vec::with_capacity(64);
+        let mut dest_path = CStringGrowablePath::new("", true);
+        let mut scoped = dest_path.scoped();
+        print(f, &self.root, OsStr::new("/"), &mut indents, &mut scoped)
+    }
+}
 
 
 #[no_mangle]
