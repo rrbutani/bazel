@@ -1575,3 +1575,250 @@ mod exclude_pruning_tests {
     }
 }
 
+#[cfg(test)]
+mod insert_tests {
+    use super::{MountTargetsMap, Mount};
+    use crate::tree_macros::*;
+
+    macro_rules! cstr_static_literal {
+        ($lit:literal) => {
+            {
+                static STR: &::std::ffi::CStr = {
+                    static LIT: &[u8] = std::concat!($lit, "\0").as_bytes();
+
+                    match ::std::ffi::CStr::from_bytes_with_nul(LIT) {
+                        Ok(res) => res,
+                        _ => unreachable!(),
+                    }
+                };
+
+                STR
+            }
+        };
+    }
+
+    macro_rules! inc {
+        ($dest:literal $(from $alt_src:literal)?) => {
+            {
+                let dest = cstr_static_literal!($dest);
+                let _alt_src = None::<&::std::ffi::CStr>;
+                $(
+                    let _alt_src = Some(cstr_static_literal!($alt_src));
+                )?
+
+                Mount::Include { dest, explicit_src: _alt_src }
+            }
+        };
+    }
+    macro_rules! exc {
+        ($dest:literal) => {
+            Mount::HardExclude { dest: cstr_static_literal!($dest) }
+        };
+    }
+
+    #[track_caller]
+    fn insert_test<'p, const PRUNE_EXCLUDES: bool>(mounts: &'p [Mount<'p>], expected: impl Into<MountTargetsMap<'p>>) {
+        let expected = expected.into();
+
+        let mut got = MountTargetsMap::new();
+        let mut mutable_mounts = Vec::from(mounts);
+        got.insert_paths(&mut mutable_mounts);
+
+        if PRUNE_EXCLUDES {
+            got.prune_excludes();
+        }
+
+        assert_eq!(
+            expected, got,
+            "Expected inserting mounts from:\n{m:?}\nTo produce:\n{e}\nBut got:\n{g}",
+            m = mounts,
+            e = expected,
+            g = got,
+        )
+    }
+
+    #[test]
+    fn simple() {
+        let mounts = [
+            inc!("/a"),
+            inc!("/b"),
+            inc!("/c"),
+            exc!("/d"),
+            inc!("/e" from "/foo"),
+            inc!("/foo/bar/baz"),
+            exc!("/foo/bar/blue"),
+        ];
+
+        let expected = dir! {
+            a: Inc,
+            b: Inc,
+            c: Inc,
+            d: Exc,
+            e: IncWith("/foo"),
+            foo: dir! {
+                bar: dir! {
+                    baz: Inc,
+                    blue: Exc,
+                },
+            },
+        };
+
+        insert_test::<false>(&mounts, expected)
+    }
+
+    #[test]
+    fn elide() {
+        let mounts = [
+            inc!("/etc"),
+            inc!("/etc/fstab"),
+            // this is elided even though it doesn't exist (but we do get a warning)
+            inc!("/etc/_som_path_that_definitely_doesnt_exist"),
+
+            exc!("/foo"),
+            exc!("/foo/bar"),
+            exc!("/foo/bar/baz/blue/blah"),
+        ];
+
+        let expected = dir! {
+            etc: Inc,
+            foo: Exc,
+        };
+
+        insert_test::<false>(&mounts, expected);
+    }
+
+    #[test]
+    #[ignore]
+    fn splat() {
+        let mounts = [
+            inc!("/etc"),
+            exc!("/etc/fstab"),
+        ];
+
+        let expected = dir! {
+            etc: Inc,
+        };
+
+        insert_test::<false>(&mounts, expected);
+    }
+
+    #[test]
+    #[should_panic = "cannot mount the root path"]
+    fn cant_mount_root_path() {
+        let mounts = [
+            inc!("/foo"),
+            inc!("/"),
+        ];
+
+        insert_test::<false>(&mounts, dir!{});
+    }
+
+    #[test]
+    #[should_panic = "Conflicting bind mounts at path `/foo`"]
+    fn conflicting_inc_mounts() {
+        let mounts = [
+            inc!("/foo"),
+            inc!("/foo" from "/bar"),
+        ];
+
+        insert_test::<false>(&mounts, dir!{})
+    }
+
+    #[test]
+    fn conflicting_inc_and_exc_mounts() {
+        let mounts = [
+            inc!("/foo"),
+            exc!("/foo"),
+        ];
+
+        // excludes have priority over includes (they are applied later)
+        insert_test::<false>(&mounts, dir!{ foo: Exc })
+    }
+
+    #[test]
+    fn nested_splatting() {
+        let mounts = [
+            exc!("/proc"),
+            inc!("/proc/bus/input/devices"),
+        ];
+
+        let expected = dir! {
+            proc: dir! { bus: dir! { input: dir! { devices: Inc } } },
+        };
+
+        insert_test::<true>(&mounts, expected);
+    }
+
+    #[test]
+    fn overlap() {
+        // more specific should win
+        let mounts = [
+            exc!("/etc"),
+            inc!("/etc/fstab"),
+        ];
+
+        let expected = dir! {
+            etc: dir! { fstab: Inc },
+        };
+
+        // prune excludes
+        //
+        // NOTE: in this case splatting the exclude is wasteful...
+        // TODO: if we're guaranteed to only get more specific mounts as we
+        // proceed is splatting excludes _always_ unnecessary? not sure
+        //   - update: I think so... we just need to be able to specify exclude
+        //     paths so that, when applied, they splat/alter the mount tree as
+        //     needed
+        //   - we don't actually need a node variant for exclude (though it is
+        //     nice for visualization/debugging)
+        insert_test::<true>(&mounts, expected);
+    }
+
+
+    #[test]
+    fn more_specific() {
+        // bad; presumes that `/proc/bus` only has `pci` and `input` subdirs..
+        let mounts = [
+            exc!("/proc"),
+            inc!("/proc/bus"),
+            exc!("/proc/bus/input"),
+            inc!("/proc/bus/input/devices"),
+        ];
+
+        let expected = dir! {
+            proc: dir! {
+                bus: dir! {
+                    input: dir! { devices: Inc },
+                    pci: Inc,
+                },
+            },
+        };
+
+        insert_test::<true>(&mounts, expected);
+    }
+
+    #[test]
+    fn explicit_source() {
+        let mounts = [
+            inc!("/foo" from "/proc/bus"),
+            exc!("/foo/pci"),
+            inc!("/foo/bar" from "/proc/bus/pci"),
+            inc!("/foo/baz" from "/proc/bus/input"),
+            exc!("/foo/baz/devices"),
+        ];
+
+        let expected = dir! {
+            foo: dir! { // /proc/bus:
+                pci: Exc,
+                input: IncWith("/proc/bus/input"),
+                bar: IncWith("/proc/bus/pci"),
+                baz: dir! {
+                    devices: Exc,
+                    handlers: IncWith("/proc/bus/input/handlers"),
+                }
+            }
+        };
+
+        insert_test::<false>(&mounts, expected);
+    }
+}
