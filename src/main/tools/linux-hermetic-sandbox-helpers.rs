@@ -469,7 +469,88 @@ impl<'p> MountTargetsMap<'p> {
     }
 }
 
+static SPLAT_COUNT: AtomicUsize = AtomicUsize::new(0);
+static SPLAT_MOUNTS: AtomicUsize = AtomicUsize::new(0);
+
 impl<'p> MountTargetsMap<'p> {
+    // count, mounts that came from splatting (not necessarily the number of
+    // _additional_ mounts since each splat replaces a mount)
+    pub fn get_splat_counts() -> (usize, usize) {
+        (SPLAT_COUNT.load(Ordering::Relaxed), SPLAT_MOUNTS.load(Ordering::Relaxed))
+    }
+
+    fn splat<'n>(inp: &'n mut MountTargetNode<'p>, dest_path: &'_ Path) -> &'n mut HashMap<Cow<'p, OsStr>, MountTargetNode<'p>> {
+        use MountTargetNode::*;
+
+        // TODO: tune default hashmap size; what's the average directory fanout?
+        let old = std::mem::replace(
+            inp,
+            Neutral { children: HashMap::with_capacity(10) },
+        );
+        let Neutral { children: ref mut map } = inp else {
+            unreachable!()
+        };
+
+        // get the path to splat:
+        let path = match &old {
+            n @ Neutral { .. } => panic!("cannot splat a `Neutral` entry; got: {:?}", n),
+            Include { source_path: Some(explicit_source) } => cstring_as_path(explicit_source.as_ref()),
+            _ => dest_path,
+        };
+
+        // checks:
+        if !path.exists() {
+            panic!("cannot splat {}; does not exist", path.display());
+        }
+        if path.is_symlink() {
+            // TODO: warn about splatting a symlink!
+        }
+        if !path.is_dir() {
+            panic!("cannot splat {}; is not a directory", path.display());
+        }
+
+        // normally we'd avoid `read_dir` in favor of the underlying `libc`
+        // function (or it's `nix` wrapper`) to avoid extra allocations but...
+        // `DirEntry` (on Linux) does what we'd do to produce the OsString for
+        // the final path segment and doesn't add much extra overhead afaict
+        // (it does have an `Arc` within that's constructed on every call to
+        // `next` though...)
+        //
+        // actually lets just use the `nix` machinery:
+        let mut dir = dir::Dir::open(
+            path, OFlag::O_RDONLY | OFlag::O_DIRECTORY,
+            Mode::empty(),
+        ).expect("open dir for splatting");
+        for child in dir.iter() {
+            let child = child.expect("error reading child while splatting");
+
+            let name = child.file_name().to_bytes();
+            if name == b"." || name == b".." { continue; }
+            let name = OsStr::from_bytes(name);
+
+            let new_node = match &old {
+                Exclude => Exclude,
+                Include { source_path: None } => Include { source_path: None },
+                Include { source_path: Some(custom_source) } => {
+                    // allocates but alas
+                    let mut new_custom_source_path = custom_source.clone().into_owned();
+
+                    new_custom_source_path.push(name);
+
+                    Include { source_path: Some(Cow::Owned(new_custom_source_path)) }
+                },
+                Neutral { .. } => unreachable!(),
+            };
+
+            // another unavoidable allocation
+            map.insert(Cow::Owned(name.to_owned()), new_node);
+        }
+
+        SPLAT_COUNT.fetch_add(1, Ordering::Relaxed);
+        SPLAT_MOUNTS.fetch_add(map.len(), Ordering::Relaxed);
+
+        map
+    }
 
     // ## Pseudo code
     /// entry merge: (prev, new)
