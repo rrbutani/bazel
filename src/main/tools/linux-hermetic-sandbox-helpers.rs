@@ -698,6 +698,69 @@ impl<'p> MountTargetsMap<'p> {
 }
 
 impl<'p> MountTargetsMap<'p> {
+    // Note: as a post-processing step we may want to do pruning of excludes?
+    //
+    // i.e. if a `Neutral` node only has excludes, we can omit it; this applies
+    // transitively up the tree
+    //
+    // eliding these nodes is beneficial since it may allow us to save on
+    // `mkdir`s (i.e. a deep exclude with no/few common ancestors with any
+    // includes)
+    pub fn prune_excludes(&mut self) {
+        self.prune_excludes_with_callback::<fn(&CStr)>(None)
+    }
+
+    pub fn prune_excludes_with_callback<F: FnMut(&CStr)>(&mut self, mut callback: Option<F>) {
+        // If we were given a callback, we'll keep track of the destination path
+        // values as we go:
+        let mut dest_path = callback.is_some().then(|| CStringGrowablePath::new("", true));
+        let callback_info = if let Some((dest_path, cb)) = dest_path.as_mut().zip(callback.as_mut()) {
+            Some((dest_path.scoped(), cb))
+        } else {
+            None
+        };
+
+        use MountTargetNode::*;
+        fn remove_excludes<F: FnMut(&CStr)>(
+            node: &mut MountTargetNode,
+            mut callback_info: Option<(ScopedPathAddition<'_, '_>, &mut F)>,
+        ) -> bool {
+            match node {
+                Exclude => {
+                    if let Some((dest_path, cb)) = callback_info {
+                        cb(dest_path.as_c_str())
+                    }
+
+                    true
+                },
+                Include { .. } => false,
+                Neutral { children } => {
+                    // Note: this will remove empty neutral nodes too!
+                    let mut all_are_excludes = true;
+
+                    children.retain(|seg, child| {
+                        let callback_info = callback_info.as_mut().map(|(p, cb)| {
+                            (p.push(seg), &mut **cb)
+                        });
+
+                        if remove_excludes::<F>(child, callback_info) {
+                            false // remove this node
+                        } else {
+                            all_are_excludes = false;
+                            true // keep this node
+                        }
+                    });
+
+                    all_are_excludes
+                }
+            }
+        }
+
+        remove_excludes(&mut self.root, callback_info);
+    }
+}
+
+impl<'p> MountTargetsMap<'p> {
     // note: time of check time of use bugs; we offer no guarantees about this
     // (we assume no mutation of the directory structure of the mounts while
     // we're setting up the sandbox)
