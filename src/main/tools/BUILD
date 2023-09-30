@@ -122,6 +122,7 @@ rust_static_library(
     deps = [
         "@crates//:nix",
         "@crates//:libc",
+        ":logging",
     ],
     target_compatible_with = [
         "@platforms//os:linux",
