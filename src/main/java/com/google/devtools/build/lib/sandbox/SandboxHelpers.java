@@ -711,15 +711,66 @@ public final class SandboxHelpers {
               // + the relative soft/hard exclude... (it doesn't make sense to
               // issue excludes for all the paths along the way...)
               //
-              // if the relative exclude path itself contains symlinks... we'll
-              // warn for now (for soft excludes; for hard excludes this will
-              // result in splatting)
+              // for soft excludes: if the relative exclude path itself contains
+              // symlinks... we'll warn for now
+              //
+              // for hard excludes: if the relative exclude path itself contains
+              // symlinks we have trouble because of the splatting that will
+              // ensue (i.e. some of the produced include mounts will have a
+              // symlink in their source...)
+              //   - note that exclude itself being a symlink is fine; it's
+              //     symlinks between the ancestors of the exclude and the base
+              //     path that the exclude is relative to that we're concerned
+              //     about
+              //   - i.e. say we have directory `/foo/bar` with a symlink at
+              //     `/foo/bar/baz -> /a` where `/a` has `/a/{b,c}`
+              //     + excluding `baz` is fine; `/foo/bar` will be splatted and
+              //       none of the source paths will contain symlinks
+              //     + excluding `baz/b` is *not fine*; this will result in the
+              //       `/foo/bar` mount being splatted to:
+              //       * `/foo/bar/<other members of this dir>`
+              //       * `/foo/bar/baz/b` (exclude)
+              //       * `/foo/bar/baz/c`
+              //     + the latter two mounts in the above are problematic
+              //       because they contain a symlink at `baz`; doing `readlink`
+              //       on `/foo/bar/baz/c` inside and outside the sandbox will
+              //       produce different results
               if (hasExcludes) {
                 var base = fs.getPath(curr);
                 if (base.isDirectory(Symlinks.NOFOLLOW)) {
                   var hardExcludes = inputSourceArtifact.getHardExcludes().stream().map((h) -> {
                     assert !h.isAbsolute(); // should be guaranteed
-                    return base.getRelative(h);
+                    var path = base.getRelative(h);
+
+                    Path resolvedParentPath;
+                    try {
+                      resolvedParentPath = path.getParentDirectory().resolveSymbolicLinks();
+                    } catch (IOException ex) {
+                      logger.atWarning().log("exception will resolving path `%s`: %s", path, ex);
+                      resolvedParentPath = path.getParentDirectory();
+                    }
+
+                    if (!path.getParentDirectory().equals(resolvedParentPath)) {
+                      String msg = String.format(
+                        "Hard excludes should not contain symbolic links in " +
+                        "their ancestors but exclude `%s` (beneath `%s` from " +
+                        "`%s`) does contain a symlink within its relative path: " +
+                        "`%s` (actually resolves to `%s`). This will result " +
+                        "siblings of ancestors up to the base path (i.e. new " +
+                        "mounts that are introduced due to splatting that " +
+                        "are beneath symlinks) having different `realpath`s " +
+                        "within the sandbox (one or more levels of symlinks " +
+                        "will be omitted).",
+                        h, base, inputSourceArtifact.getArtifactOwner().getLabel(),
+                        h.getParentDirectory(), resolvedParentPath
+                      );
+                      logger.atWarning().log("%s", msg);
+                      if (reporter != null) {
+                        reporter.handle(Event.warn(msg).withTag("hard-exclude-symlink-in-ancestors"));
+                      }
+                    }
+
+                    return path;
                   });
                   externalSourceArtifactHardExcludes.addAll(hardExcludes.iterator());
 
