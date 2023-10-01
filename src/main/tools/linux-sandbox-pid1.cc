@@ -64,6 +64,7 @@
   })
 #endif  // TEMP_FAILURE_RETRY
 
+#include "src/main/tools/linux-hermetic-sandbox-helpers.h"
 #include "src/main/tools/linux-sandbox-options.h"
 #include "src/main/tools/linux-sandbox.h"
 #include "src/main/tools/logging.h"
@@ -628,7 +629,14 @@ static void MountDev() {
 }
 
 // TODO: unify with `MountFilesystems`?
+//
+// note: this is the version of ^ for the hermetic sandbox
 static void MountAllMounts() {
+  // Note that we do not create target directories here and do not prefix the
+  // tmpfs_dirs with the sandbox base.
+  //
+  // for now, keeping this separate from the tree based logic for the rest of
+  // the mounts (TODO)
   for (const std::string &tmpfs_dir : opt.tmpfs_dirs) {
     PRINT_DEBUG("tmpfs: %s", tmpfs_dir.c_str());
     if (mount("tmpfs", tmpfs_dir.c_str(), "tmpfs",
@@ -645,6 +653,8 @@ static void MountAllMounts() {
     DIE("mount(%s, %s, nullptr, MS_BIND, nullptr)", opt.working_dir.c_str(),
         opt.working_dir.c_str());
   }
+
+  /*
   for (int i = 0; i < (signed)opt.bind_mount_sources.size(); i++) {
     if (global_debug) {
       if (strcmp(opt.bind_mount_sources[i],
@@ -672,14 +682,28 @@ static void MountAllMounts() {
       DIE("CreateTarget %s", full_sandbox_path.c_str());
     }
     int result =
-        mount(opt.bind_mount_sources[i].c_str(), full_sandbox_path.c_str(),
+        mount(opt.bind_mount_sources[i], full_sandbox_path.c_str(),
               NULL, MS_REC | MS_BIND | MS_RDONLY, NULL);
     if (result != 0) {
       DIE("mount");
     }
   }
+  */
 
-  // TODO: we should ignore writable_files that aren't below the `sandbox_root`?
+  // Handle bind mounts and hard/soft excludes:
+  helpers::handle_mounts(
+    opt.sandbox_root,
+    opt.bind_mount_sources,
+    opt.bind_mount_targets,
+    opt.hard_exclude_paths,
+    opt.soft_exclude_paths
+  );
+
+  // NOTE: we are ignoring writable_files that aren't below the `sandbox_root`.
+  //
+  // TODO: we should probably incorporate this in the tree logic above...
+  //   - and maybe just remount here? (actually we can't; splatting would need
+  //     to know if the original mount was writable to propagate correctly..)
   for (const std::string &writable_file : opt.writable_files) {
     if (!opt.sandbox_root.empty()) {
       if (writable_file.find(opt.sandbox_root) == std::string::npos) {
@@ -752,7 +776,10 @@ int Pid1Main(void *sync_pipe_param) {
     MountDev();
     MountAllMounts();
     MountProc();
-    MakeFilesystemMostlyReadOnly(); // why was this not already included?
+
+    // redundant; in hermetic mode everything not explicitly mounted in will be
+    // inaccessible
+    // MakeFilesystemMostlyReadOnly();
     ChangeRoot();
   } else {
     MountFilesystems();
