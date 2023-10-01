@@ -6,7 +6,7 @@ use std::{
     ffi::{CStr, OsStr},
     fmt,
     fs,
-    os::unix::prelude::OsStrExt,
+    os::{unix::prelude::OsStrExt, raw::c_char},
     path::{Path, Component, Components},
     sync::atomic::{AtomicUsize, Ordering}, cmp,
 };
@@ -1279,13 +1279,16 @@ impl<'p> MountTargetsMap<'p> {
                     }
 
                     // push
-                    // mkdir sandbox_base + node.path (ensure dest does not exist / is a dir?)
+                    //
+                    // mkdir sandbox_base + node.path (ensure dest does not
+                    // exist / is a dir?)
                     //  - ideally we'd check that the dest is not a mountpoint
                     //    but that seems expensive..
                     //  - should *not* also assert that node.path is a directory
-                    //    because the child(ren) mounts that resulted in this
-                    //    node existing may all have sources that don't contain
-                    //    `node.path`
+                    //    on the host filesystem because the child(ren) mounts
+                    //    that resulted in this node existing may all have
+                    //    sources that don't contain `node.path`
+                    //
                     // run `handle` for each child
                 }
             }
@@ -1420,6 +1423,24 @@ mod tree_macros {
         MountTargetNode::Include { source_path: Some(Cow::Owned(CStringGrowablePath::new(p.as_ref(), false))) }
     }
 
+    #[macro_export]
+    macro_rules! cstr_static_literal {
+        ($lit:literal) => {
+            {
+                static STR: &::std::ffi::CStr = {
+                    static LIT: &[u8] = std::concat!($lit, "\0").as_bytes();
+
+                    match ::std::ffi::CStr::from_bytes_with_nul(LIT) {
+                        Ok(res) => res,
+                        _ => unreachable!(),
+                    }
+                };
+
+                STR
+            }
+        };
+    }
+    pub use crate::cstr_static_literal;
 }
 
 
@@ -1448,6 +1469,117 @@ extern "C" fn test() {
     });
 
     // panic!();
+}
+
+#[no_mangle]
+unsafe extern "C" fn handle_mounts<'p>(
+    sandbox_base_path: *const c_char,
+    sandbox_base_path_len: usize, // excluding nul terminator
+    bind_mount_sources_array: *const *const c_char,
+    bind_mount_dests_array: *const *const c_char,
+    bind_mount_count: usize, // length of the bind mount sources and dests arrays
+    hard_exclude_paths_array: *const *const c_char,
+    hard_exclude_paths_array_len: usize,
+    soft_exclude_paths_array: *const *const c_char,
+    soft_exclude_paths_array_len: usize,
+) {
+    let sandbox_base_path = unsafe {
+        let slice = std::slice::from_raw_parts(
+            sandbox_base_path as *const _,
+            sandbox_base_path_len + 1,
+        );
+        CStr::from_bytes_with_nul_unchecked(slice)
+    };
+
+    let bind_mount_sources = unsafe { std::slice::from_raw_parts(
+        bind_mount_sources_array as *const *const c_char,
+        bind_mount_count,
+    ) };
+    let bind_mount_dests = unsafe { std::slice::from_raw_parts(
+        bind_mount_dests_array as *const *const c_char,
+        bind_mount_count,
+    ) };
+    let hard_excludes = unsafe { std::slice::from_raw_parts(
+        hard_exclude_paths_array as *const *const c_char,
+        hard_exclude_paths_array_len,
+    ) };
+    let soft_excludes = unsafe { std::slice::from_raw_parts(
+        soft_exclude_paths_array as *const *const c_char,
+        soft_exclude_paths_array_len,
+    ) };
+
+    let mut mounts = Vec::with_capacity(bind_mount_sources.len() + hard_excludes.len());
+    let bind_mounts = bind_mount_sources.iter().zip(bind_mount_dests.iter()).map(|(&src, &dest)| {
+        let dest_path = unsafe { CStr::from_ptr::<'p>(dest) };
+
+        // NOTE: this incurs an O(N) strlen on dest/src...
+        //
+        // tricky to elide this, not sure if we want to (we need the len to do
+        // things like clone the path for splatting efficiently)
+        if src == dest {
+            // relying on pointer equality to tell us whether src and dest are
+            // the same
+            //
+            // it is definitely possible for src and dest to point to different
+            // allocations but to have the same contents but this is rare: it
+            // only happens when an explicit `-M -m` pair is passed in with
+            // the same source/dest path
+            //
+            // it seems not worth doing the extra O(n) scan to check for this
+            Mount::Include { dest: dest_path, explicit_src: None }
+        } else {
+            Mount::Include {
+                dest: dest_path,
+                explicit_src: Some(unsafe { CStr::from_ptr(src) })
+            }
+        }
+    });
+    let hard_excludes = hard_excludes.iter().map(|&path| {
+        // see above; this too is a O(N) operation (`strlen`)
+        Mount::HardExclude { dest: unsafe { CStr::from_ptr::<'p>(path) } }
+    });
+    mounts.extend(bind_mounts.chain(hard_excludes));
+
+    let soft_excludes = soft_excludes.iter().map(|&path| {
+        unsafe { CStr::from_ptr::<'p>(path) }
+    });
+
+    apply_mounts_inner(sandbox_base_path, &mut mounts, soft_excludes)
+}
+
+fn apply_mounts_inner<'p>(
+    sandbox_base_path: &'p CStr,
+    mut mounts: &mut Vec<Mount<'p>>,
+    soft_excludes: impl Iterator<Item = &'p CStr>,
+) {
+
+    // bind mounts and hard excludes:
+    {
+        let mut mount_map = MountTargetsMap::new();
+        mount_map.insert_paths(&mut mounts);
+
+        debug!("mount map:\n{mount_map:#}\n");
+
+        mount_map.apply(cstring_as_path(sandbox_base_path));
+    }
+
+    // not even going to bother sorting `soft_excludes`:
+    {
+        static EMPTY_DIR: &CStr = tree_macros::cstr_static_literal!("tmp/empty_dir");
+        // mkdir (allow dup) empty dir -- make unwritable
+
+        for ex in soft_excludes {
+            // check if exists, if not: warn
+            // if file: mount empty file
+            // if dir: mount empty dir
+
+            // debug: if symlink: yell
+            // debug print excluding ...
+            // debug: add to soft exclude tree... (with the file/dir as mount source)
+        }
+
+        // debug: print soft exclude tree
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1579,23 +1711,6 @@ mod exclude_pruning_tests {
 mod insert_tests {
     use super::{MountTargetsMap, Mount};
     use crate::tree_macros::*;
-
-    macro_rules! cstr_static_literal {
-        ($lit:literal) => {
-            {
-                static STR: &::std::ffi::CStr = {
-                    static LIT: &[u8] = std::concat!($lit, "\0").as_bytes();
-
-                    match ::std::ffi::CStr::from_bytes_with_nul(LIT) {
-                        Ok(res) => res,
-                        _ => unreachable!(),
-                    }
-                };
-
-                STR
-            }
-        };
-    }
 
     macro_rules! inc {
         ($dest:literal $(from $alt_src:literal)?) => {
