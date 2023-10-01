@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 
 /**
  * A pair of output streams to be used for redirecting the output and error streams of a subprocess.
@@ -103,7 +104,7 @@ public class OutErr implements Closeable {
   private static final class SwitchingPrintStream extends PrintStream {
 
     private SwitchingPrintStream(OutputStream override) {
-      super(override, /*autoFlush=*/ true);
+      super(override, /*autoFlush=*/ true, StandardCharsets.UTF_8);
     }
 
     private void switchBackTo(OutputStream saved) {
