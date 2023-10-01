@@ -133,7 +133,7 @@ public class AnsiTerminal {
    * Set the terminal title.
    */
   public void setTitle(String title) throws IOException {
-    writeBytes(SET_TERM_TITLE, title.getBytes(), new byte[] { BEL });
+    writeBytes(SET_TERM_TITLE, title.getBytes(StandardCharsets.UTF_8), new byte[] { BEL });
   }
 
   /**
@@ -143,7 +143,7 @@ public class AnsiTerminal {
    * @param text the text to write
    */
   public void writeString(String text) throws IOException {
-    out.write(text.getBytes());
+    out.write(text.getBytes(StandardCharsets.UTF_8));
   }
 
   /**
