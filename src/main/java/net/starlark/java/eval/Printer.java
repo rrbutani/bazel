@@ -14,6 +14,8 @@
 package net.starlark.java.eval;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.IllegalFormatException;
 import java.util.List;
@@ -105,7 +107,7 @@ public class Printer {
 
   @Override
   public final String toString() {
-    return buffer.toString();
+    return new String(buffer.toString().getBytes(), StandardCharsets.UTF_8);
   }
 
   /**
