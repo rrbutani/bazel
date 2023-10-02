@@ -172,9 +172,20 @@ public class Filegroup implements RuleConfiguredTargetFactory {
       // get a warning that the excludes are ignored if the source artifact
       // they're tied to is not a directory)
 
+      // NOTE: this is somewhat dangerous!
+      //
+      // we're modifying an artifact that isn't created by us; this means that
+      // if multiple filegroups (for example) specify excludes for this source
+      // artifact, they'll conflict (all will try to modify this source
+      // artifact)!
+      //
+      // further, I think this is actually an incrementality hazard...
+      //
+      // TODO: at least guard against this (i.e. store label indicating who set
+      // the info)
       SourceArtifact dir = (SourceArtifact)single;
-      excludeInfo.hardExcludes.forEach((h) -> dir.addHardExclude(h));
-      excludeInfo.softExcludes.forEach((s) -> dir.addSoftExclude(s));
+      dir.setHardExcludes(ImmutableSet.copyOf(excludeInfo.hardExcludes));
+      dir.setSoftExcludes(ImmutableSet.copyOf(excludeInfo.softExcludes));
 
       filesToBuild = NestedSetBuilder.create(Order.STABLE_ORDER, dir);
     }

@@ -25,6 +25,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
@@ -1023,14 +1024,14 @@ public abstract class Artifact
       return (this.softExcludes != null) ? this.softExcludes : this.empty;
     }
 
-    public void addHardExclude(PathFragment relativePath) {
-      if (this.hardExcludes == null) { this.hardExcludes = new HashSet(); }
-      this.hardExcludes.add(relativePath);
+    // important that we replace the existing set; instances of this class
+    // carry over...
+    public void setHardExcludes(ImmutableSet<PathFragment> relativePaths) {
+      this.hardExcludes = relativePaths;
     }
 
-    public void addSoftExclude(PathFragment relativePath) {
-      if (this.softExcludes == null) { this.softExcludes = new HashSet(); }
-      this.softExcludes.add(relativePath);
+    public void setSoftExcludes(ImmutableSet<PathFragment> relativePaths) {
+      this.softExcludes = relativePaths;
     }
 
     private Set<PathFragment> hardExcludes = null;
