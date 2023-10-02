@@ -1816,6 +1816,19 @@ fn apply_mounts_inner<'p>(
     soft_excludes: &mut Vec<&'p CStr>,
 ) {
     use colors::{BOLD, BLUE, RESET, RED};
+    use Kind::*;
+
+    // panic hook that prints using `debug` first
+    std::panic::set_hook(Box::new(|info| {
+        let loc = info.location().unwrap();
+        debug!(
+            "{RED}panicked{RESET} at: {}:{}:\n{}", loc.file(), loc.line(), info.to_string(),
+        );
+
+        eprintln!("{RED}panicked{RESET}: {}", info.to_string())
+    }));
+
+    debug!("SANDBOX BASE: {BOLD}{BLUE}{}{RESET}", sandbox_base_path.display());
 
     // bind mounts and hard excludes:
     {
