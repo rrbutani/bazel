@@ -1,6 +1,3 @@
-extern crate nix; // to appease rust-analyzer
-extern crate libc; // to appease rust-analyzer
-
 use std::{
     borrow::Cow,
     collections::{HashMap, hash_map::Entry},
@@ -416,13 +413,13 @@ mod utils {
 mod fs_utils {
     use std::{ffi::CStr, fmt};
 
-    use libc::{S_IFMT, S_IFDIR, S_IFLNK};
+    use libc::{S_IFMT, S_IFDIR, S_IFLNK, S_IFREG};
     use nix::{errno::Errno, sys::stat::Mode, mount};
 
     use crate::{utils::OsStrDisplayExt, colors};
 
     #[derive(Debug)]
-    pub enum Kind { Dir, File, Symlink }
+    pub enum Kind { Dir, File, Symlink, Other }
     impl fmt::Display for Kind {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             use Kind::*;
@@ -432,6 +429,7 @@ mod fs_utils {
                     Dir => colors::BLUE,
                     File => colors::YELLOW,
                     Symlink => colors::PURPLE,
+                    Other => colors::RED,
                 })?;
             }
 
@@ -439,6 +437,7 @@ mod fs_utils {
                 Dir => "directory",
                 File => "file",
                 Symlink => "symlink",
+                Other => "other file",
             })?;
 
             if f.alternate() { f.write_str(colors::RESET)?; }
@@ -473,7 +472,8 @@ mod fs_utils {
                 match stats.st_mode {
                     m if (m & S_IFMT) == S_IFDIR => Kind::Dir,
                     m if (m & S_IFMT) == S_IFLNK => Kind::Symlink,
-                    _ => Kind::File,
+                    m if (m & S_IFMT) == S_IFREG => Kind::File,
+                    _ => Kind::Other,
                 }
             }),
             // https://man7.org/linux/man-pages/man2/stat.2.html#ERRORS
@@ -1439,7 +1439,7 @@ impl<'p> MountTargetsMap<'p> {
                             fs_utils::mkdir_idempotent(dest_path.as_c_str(), None);
                             fs_utils::bind_mount(source, dest_path.as_c_str());
                         },
-                        Kind::File => {
+                        Kind::File | Kind::Other => {
                             // touch (or rather hardlink the empty file?) | should not already exist, but allow it..
                             // mount
 
