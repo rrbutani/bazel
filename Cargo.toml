@@ -6,7 +6,7 @@ edition = "2021"
 # as of this writing `rules_rust` does not appear to have a way to specify
 # crates.io deps via its bzlmod interface without using a Cargo.toml file
 [dependencies]
-nix = { version = "0.27", features = ["time", "fs", "dir"] }
+nix = { version = "0.27", features = ["time", "fs", "dir", "mount"] }
 libc = "0.2"
 
 [lib]
