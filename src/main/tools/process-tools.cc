@@ -259,6 +259,8 @@ CreateExecutionStatisticsProto(struct rusage *rusage) {
   resource_usage->set_nvcsw(rusage->ru_nvcsw);
   resource_usage->set_nivcsw(rusage->ru_nivcsw);
 
+  // TODO: include sandbox setup time/setup stats? (i.e. number of mounts, splat count)
+
   return execution_statistics;
 }
 
