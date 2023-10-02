@@ -96,7 +96,7 @@ static int global_child_pid;
 static void CreateFile(const char *path) {
   int handle = open(path, O_CREAT | O_WRONLY | O_EXCL, 0666);
   if (handle < 0) {
-    DIE("open");
+    DIE("open(%s)", path);
   }
   if (close(handle) < 0) {
     DIE("close");
@@ -500,6 +500,7 @@ static void EnterWorkingDirectory() {
     path = path.substr(opt.sandbox_root.size() + 1);
   }
 
+  PRINT_DEBUG("chdir to working dir: %s", path.c_str());
   if (chdir(path.c_str()) < 0) {
     DIE("chdir(%s)", path.c_str());
   }
@@ -609,6 +610,14 @@ static void CreateEmptyFile() {
   if (CreateTarget("tmp", true) < 0) {
     DIE("CreateTarget tmp")
   }
+
+  // If the empty file already exists we're done.
+  struct stat sb;
+  if (stat("tmp/empty_file", &sb) == 0 && S_ISREG(sb.st_mode)) {
+    return;
+  }
+
+  // otherwise create it:
   CreateFile("tmp/empty_file");
 }
 
