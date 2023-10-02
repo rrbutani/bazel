@@ -1,5 +1,5 @@
 {
-  "checksum": "b09a553d2c4794cd6af15d9f45a96970cda4738dc17860106d7ab8a97f2e8554",
+  "checksum": "650560d637bab4331c5354ce1514ac8c57dd3a66458049cdb798fbc322fa7f24",
   "crates": {
     "bitflags 2.4.0": {
       "name": "bitflags",
@@ -190,7 +190,9 @@
             "default",
             "dir",
             "fs",
-            "time"
+            "mount",
+            "time",
+            "uio"
           ],
           "selects": {}
         },
