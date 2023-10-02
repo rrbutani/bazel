@@ -81,7 +81,7 @@ crates_repository(
     },
 
     packages = dict(
-        nix = crate.spec(version = "0.27", features = ["time"]),
+        nix = crate.spec(version = "0.27", features = ["dir", "fs", "mount", "time"]),
         libc = crate.spec(version = "0.2"),
     ),
 )
