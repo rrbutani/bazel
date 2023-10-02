@@ -288,7 +288,8 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
 
     if (useHermeticTmp) {
       // The directory which will be mounted at /tmp in the sandbox
-      sandboxTmp = sandboxPath.getRelative("_hermetic_tmp");
+      // sandboxTmp = sandboxPath.getRelative("_hermetic_tmp");
+      sandboxTmp = sandboxPath.getRelative("tmp"); // TODO: revisit (HACK)
       withinSandboxSourceRoots = fileSystem.getPath(SLASH_TMP.getRelative(BAZEL_SOURCE_ROOTS));
       withinSandboxWorkingDirectory =
           fileSystem
@@ -443,7 +444,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
 
     // TODO: gate on `sandboxTmp`?
     if (getSandboxOptions().useHermetic) {
-      writableDirs.add(sandboxExecRoot.getRelative("../../_hermetic_tmp"));
+      // writableDirs.add(sandboxExecRoot.getRelative("../../_hermetic_tmp"));
       writableDirs.add(sandboxExecRoot.getRelative("../../tmp"));
     }
 
@@ -529,9 +530,12 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
         // TODO: I don't think we need working directory?
         //
         // note that since bind mount destinations are automatically prefixed
-        // with the sandbox base, we use `hermeticTmpPath` relative destinations
+        // with the sandbox base, we use `tmpPath` relative destinations
         // (same as below)
-        result.add(BindMount.of(hermeticTmpPath.getRelative(BAZEL_EXECROOT), blazeDirs.getExecRootBase()));
+        result.add(BindMount.of(tmpPath.getRelative(BAZEL_EXECROOT), blazeDirs.getExecRootBase()));
+
+        // TODO(rrbutani): fix this; we shouldn't be mounting in the entire
+        // execroot?
       }
 
       // Then mount the individual package roots under $SANDBOX/_tmp/bazel-source-roots
@@ -543,16 +547,13 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
                 if (!getSandboxOptions().useHermetic) {
                   result.add(BindMount.of(sandboxTmp.getRelative(sandboxTmpSourceRoot), real));
                 } else {
-                  // if we're chrooting there's no need to prefix paths with the
-                  // sandboxTmp but we do want to pivot from `/tmp` to
-                  // `_hermetic_tmp`
-                  //
-                  // this is because the last bind mount is `/_hermetic_tmp`
-                  // onto `/tmp`; any mounts we make in `/tmp` before then will
-                  // be shadowed..
-                  Path hermeticTmpSourceRoot = hermeticTmpPath.getRelative(sandboxTmpSourceRoot);
+                  // Note: we no longer mount into `_hermetic_tmp` and then
+                  // pivot that dir onto `/tmp`; we just mount into `/tmp`
+                  // directly and let the sandbox's mount resolution handle
+                  // conflicts.
+                  Path tmpSourceRoot = tmpPath.getRelative(sandboxTmpSourceRoot);
                   result.add(BindMount.of(
-                    hermeticTmpSourceRoot,
+                    tmpSourceRoot,
                     real
                   ));
                 }
@@ -563,9 +564,11 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
           .getExternalSourceArtifactBindMounts()
           .forEach((path) -> { result.add(BindMount.of(path, path)); });
 
-      // Then mount $SANDBOX/_tmp at /tmp. At this point, even if the output base (and execroot)
-      // and individual source roots are under /tmp, they are accessible at /tmp/bazel-*
-      result.add(BindMount.of(tmpPath, sandboxTmp));
+      // Not needed anymore? We're mounting directly into `/tmp` instead of
+      // doing the `_hermetic_tmp` pivot thing.
+      // // Then mount $SANDBOX/_tmp at /tmp. At this point, even if the output base (and execroot)
+      // // and individual source roots are under /tmp, they are accessible at /tmp/bazel-*
+      // result.add(BindMount.of(tmpPath, sandboxTmp));
     }
 
     if (getSandboxOptions().useHermetic) {
