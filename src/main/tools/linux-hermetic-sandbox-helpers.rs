@@ -411,7 +411,7 @@ mod utils {
 }
 
 mod fs_utils {
-    use std::{ffi::CStr, fmt};
+    use std::{ffi::CStr, fmt, sync::atomic::{AtomicUsize, Ordering}};
 
     use libc::{S_IFMT, S_IFDIR, S_IFLNK, S_IFREG};
     use nix::{errno::Errno, sys::stat::Mode, mount};
@@ -500,6 +500,12 @@ mod fs_utils {
         }
     }
 
+    static BIND_MOUNT_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    pub fn get_bind_mount_count() -> usize {
+        BIND_MOUNT_COUNT.load(Ordering::Relaxed)
+    }
+
     #[track_caller]
     pub fn bind_mount(src: &CStr, dest: &CStr) {
         use nix::mount::MsFlags as F;
@@ -519,6 +525,8 @@ mod fs_utils {
                 src.display(), dest.display(),
             )
         }
+
+        BIND_MOUNT_COUNT.fetch_add(1, Ordering::Relaxed);
     }
 }
 
@@ -1856,6 +1864,17 @@ fn apply_mounts_inner<'p>(
 
         // debug: print soft exclude tree
     }
+
+    // counts:
+    let (splat_count, mounts_from_splatting) = MountTargetsMap::get_splat_counts();
+    debug!(
+        "counts:\
+        \n  - bind mounts: {}\
+        \n  - splats: {}\
+        \n  - mounts from splatting: {}",
+        fs_utils::get_bind_mount_count(),
+        splat_count, mounts_from_splatting
+    )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
