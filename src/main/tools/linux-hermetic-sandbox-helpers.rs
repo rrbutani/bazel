@@ -1494,14 +1494,24 @@ impl<'p> MountTargetsMap<'p> {
                                 )
                             };
 
-                            // todo: perf optimize
-                            let dest = cstring_as_path(dest_path.as_c_str());
-                            if dest.exists() {
-                                if dest.is_file() || dest.is_symlink() {
-                                    fs::remove_file(dest).unwrap();
-                                } else {
-                                    warn!("target of mount `{}` already exists and is not a file or symlink", dest.display());
-                                }
+                            // If the file already exists, try to delete it:
+                            match fs_utils::stat(dest_path.as_c_str()) {
+                                None => { /* doesn't exist, all good */ },
+                                Some(Kind::File | Kind::Symlink) => {
+                                    fs::remove_file(cstring_as_path(dest_path.as_c_str())).expect("failing to delete existing file (in order to make symlink)");
+                                },
+                                Some(Kind::Dir | Kind::Other) => {
+                                    warn!("target of mount `{}` already exists and is not a file or symlink", dest_path.as_c_str().display());
+
+                                    // TODO: check that this is an empty dir first...
+                                    //  - remove_dir won't work unless it is but
+                                    //    still
+
+                                    // this comes up because Bazel makes empty
+                                    // dirs for the source roots (which are
+                                    // sometimes symlinks?)
+                                    fs::remove_dir(cstring_as_path(dest_path.as_c_str())).expect("failing to delete existing dir/entry (in order to make symlink)");
+                                },
                             }
 
                             // no issues with relative symlinks
@@ -1846,23 +1856,84 @@ fn apply_mounts_inner<'p>(
         mount_map.apply(cstring_as_path(sandbox_base_path));
     }
 
-    // not even going to bother sorting `soft_excludes`:
+    // soft excludes:
     {
+        // we'll sort soft excludes so that there's at least _some_ consistency:
+        soft_excludes.sort();
+
+        // Note: if a `mountat` syscall existed (in the style of `fstatat`) we'd
+        // use it here; it'd let us avoid allocating to prefix the soft exclude
+        // paths with the sandbox base.
+        let mut dest_path = CStringGrowablePath::new(cstring_as_path(sandbox_base_path), true);
+        let mut dest_path = dest_path.scoped();
+        let mut debug_map = MountTargetsMap::new();
+
+        // mkdir (allow dup) empty dir -- make inaccessible (no rx bits)?
         static EMPTY_DIR: &CStr = tree_macros::cstr_static_literal!("tmp/empty_dir");
-        // mkdir (allow dup) empty dir -- make unwritable
+        fs_utils::mkdir_idempotent(EMPTY_DIR, None); // TODO: not making inaccessible for now..
 
         for ex in soft_excludes {
-            // check if exists, if not: warn
+            // we're pushing more than 1 segment but its fine
+            let exclude_path = dest_path.push(cstring_as_path(&ex).as_os_str());
+            let Some(kind) = fs_utils::stat(exclude_path.as_c_str()) else {
+                warn!(
+                    "exclude path `<sandbox>{}` does not exist, skipping",
+                    ex.display(),
+                );
+
+                continue
+            };
+
+            // debug print at the top so error messages have context:
+            debug!("excluding {kind:#} at `<sandbox>{}`", ex.display());
+
             // if file: mount empty file
             // if dir: mount empty dir
-
             // debug: if symlink: yell
-            // debug: if beneath symlink: yell
-            // debug print excluding ...
+            let source = match kind {
+                Dir => EMPTY_DIR,
+                File | Other => EMPTY_FILE,
+                Symlink => {
+                    warn!(
+                        "exclude path `<sandbox>{}` is a symlink! attempting \
+                        to bind mount onto this path will result in the bind \
+                        mount's target being the *target* of the symlink \
+                        rather than the path of the symlink... treating as a \
+                        file (this will fail if the symlink's target is not a \
+                        file)",
+                        ex.display(),
+                    );
+                    EMPTY_FILE
+                },
+            };
+
             // debug: add to soft exclude tree... (with the file/dir as mount source)
+            if_debug(|| {
+                debug_map.insert(ex, Some(source), false);
+            });
+
+            // debug: if beneath symlink: complain
+            //
+            // mirrors the check in `MountTargetsMap::apply`
+            if_debug(|| {
+                let Some(parent) = cstring_as_path(exclude_path.as_c_str()).parent() else { return; };
+                let Ok(canon) = parent.canonicalize() else { return; };
+                if canon != parent { warn!(
+                    "exclude at `<sandbox>{}` contains a symlink somewhere in \
+                    its ancestors! \
+                    \n  - parent of exclude:    `{par}` \
+                    \n  - actually resolves to: `{can}` \
+                    \n\n This will result in the exclude's bind mount being
+                    placed beneath the resolved path above.",
+                    ex.display(), par = parent.display(), can = canon.display(),
+                ) }
+            });
+
+            fs_utils::bind_mount(source, exclude_path.as_c_str());
         }
 
         // debug: print soft exclude tree
+        debug!("soft exclude map (warning: may be misleading):\n{debug_map:#}\n\n");
     }
 
     // counts:
