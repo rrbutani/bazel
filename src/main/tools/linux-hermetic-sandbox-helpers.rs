@@ -1,4 +1,5 @@
 extern crate nix; // to appease rust-analyzer
+extern crate libc; // to appease rust-analyzer
 
 use std::{
     borrow::Cow,
@@ -11,12 +12,12 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering}, cmp,
 };
 
-use nix::{NixPath, dir, fcntl::OFlag, sys::stat::Mode};
+use nix::{NixPath, dir, fcntl::{OFlag, self}, sys::stat::Mode, unistd, errno::Errno};
 
-use crate::utils::{
+use crate::{utils::{
     CStrNewType, OsStrDisplayExt, cstring_as_path, CStringGrowablePath,
-    ScopedPathAddition, debug,
-};
+    ScopedPathAddition, debug, if_debug,
+}, fs_utils::Kind};
 
 mod utils {
     use std::{
@@ -35,11 +36,13 @@ mod utils {
         static global_debug: *mut libc::FILE;
     }
 
-    pub fn if_debug(func: impl FnOnce()) {
+    pub fn if_debug<R>(func: impl FnOnce() -> R) -> Option<R> {
         // We want to optimize for the common case (not running under debug
         // mode) so we do this check first (so that we can bail quicker).
         if (!unsafe { global_debug }.is_null()) || cfg!(test) /* enable for tests */ {
-            func()
+            Some(func())
+        } else {
+            None
         }
     }
 
@@ -48,7 +51,7 @@ mod utils {
     #[cfg_attr(test, allow(unreachable_code))]
     pub fn debug(func: impl FnOnce(&mut dyn std::io::Write)) {
         let loc = Location::caller();
-    if_debug(move || {
+    if_debug::<()>(move || {
         #[cfg(test)]
         {
             // when running tests, include the debug output; put it on stderr:
@@ -108,7 +111,7 @@ mod utils {
 
         func(out);
         <&File as Write>::flush(out).unwrap();
-    }) }
+    }); }
 
     #[macro_export]
     macro_rules! debug {
@@ -117,6 +120,14 @@ mod utils {
                 writeln!(o, $($tt)*).unwrap()
             })
         }
+    }
+
+    #[macro_export]
+    macro_rules! warn {
+        ($fmt_string:literal $($tt:tt)*) => {
+            // bold, purple
+            debug!(::std::concat!("\x1b[1m\x1b[35mWARNING\x1b[0m: ", $fmt_string) $($tt)* )
+        };
     }
 
     // zero copy
@@ -181,7 +192,7 @@ mod utils {
 
     impl CStringGrowablePath {
         // default allocation size hint:
-        const MAX_EXPECTED_PATH_LEN_IN_BYTES: usize = 1024;
+        const MAX_EXPECTED_PATH_LEN_IN_BYTES: usize = libc::PATH_MAX as _;
 
         fn ensure_null_termination(&mut self) {
             match self.allocation.spare_capacity_mut() {
@@ -402,6 +413,115 @@ mod utils {
     }
 }
 
+mod fs_utils {
+    use std::{ffi::CStr, fmt};
+
+    use libc::{S_IFMT, S_IFDIR, S_IFLNK};
+    use nix::{errno::Errno, sys::stat::Mode, mount};
+
+    use crate::{utils::OsStrDisplayExt, colors};
+
+    #[derive(Debug)]
+    pub enum Kind { Dir, File, Symlink }
+    impl fmt::Display for Kind {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            use Kind::*;
+
+            if f.alternate() {
+                f.write_str(match self {
+                    Dir => colors::BLUE,
+                    File => colors::YELLOW,
+                    Symlink => colors::PURPLE,
+                })?;
+            }
+
+            f.write_str(match self {
+                Dir => "directory",
+                File => "file",
+                Symlink => "symlink",
+            })?;
+
+            if f.alternate() { f.write_str(colors::RESET)?; }
+
+            Ok(())
+        }
+    }
+    // returns None if doesn't exist
+    #[track_caller]
+    pub fn stat(p: &CStr) -> Option<Kind> {
+        // we actually do not need or want the extra information
+        // that stat gives us (c/a/mtime, inodes, size, owner,
+        // etc.) but there doesn't seem to be a syscall that
+        // elides these
+        //
+        // if we *really* wanted to minimize syscalls at the
+        // expense of complexity, we'd have splatting cache the
+        // file type that it gets back from `getdents`:
+        // https://man7.org/linux/man-pages/man2/getdents.2.html
+        //
+        // TODO: potential perf opt
+        //   - this would also let us elide syscalls for some of
+        //     the checks (i.e. is directory) that future splats
+        //     do
+
+        // note that we're using `lstat` so that we can tell if
+        // we've got a symlink on our hands:
+        // https://man7.org/linux/man-pages/man2/stat.2.html#DESCRIPTION
+        match nix::sys::stat::lstat(p) {
+            Ok(stats) => Some({
+                // https://man7.org/linux/man-pages/man7/inode.7.html
+                match stats.st_mode {
+                    m if (m & S_IFMT) == S_IFDIR => Kind::Dir,
+                    m if (m & S_IFMT) == S_IFLNK => Kind::Symlink,
+                    _ => Kind::File,
+                }
+            }),
+            // https://man7.org/linux/man-pages/man2/stat.2.html#ERRORS
+            Err(Errno::ENOENT) => None,
+            Err(other) => panic!("Unable to `lstat` mount source `{}`: {other}", p.display()),
+        }
+    }
+
+    static DEFAULT_DIR_PERMS: Mode = match Mode::from_bits(0o755) {
+        Some(m) => m,
+        None => panic!(),
+    };
+    // creates a directory at `path` if it doesn't already exist
+    #[track_caller]
+    pub fn mkdir_idempotent(path: &CStr, perms: Option<Mode>) {
+        match nix::unistd::mkdir(path, perms.unwrap_or(DEFAULT_DIR_PERMS)) {
+            // if error is "already exists", ok
+            Ok(()) | Err(Errno::EEXIST) => {},
+            // on other error: crash
+            Err(other) => panic!(
+                "Failed to create dir at `{}`: {other}",
+                path.display()
+            ),
+        }
+    }
+
+    #[track_caller]
+    pub fn bind_mount(src: &CStr, dest: &CStr) {
+        use nix::mount::MsFlags as F;
+
+        match mount::mount(
+            Some(src),
+            dest,
+            None::<&CStr>,
+            // TODO: revisit these mount flags!
+            // https://man7.org/linux/man-pages/man2/mount.2.html
+            F::MS_REC | F::MS_BIND | F::MS_RDONLY,
+            None::<&CStr>,
+        ) {
+            Ok(()) => {},
+            Err(e) => panic!(
+                "Error bind mounting `{}` to `{}`: {e}",
+                src.display(), dest.display(),
+            )
+        }
+    }
+}
+
 // actually nevermind; for splatted paths this will need to be suffixed too..
 //
 // we'll just use the path we build up as we do the walk
@@ -500,13 +620,17 @@ impl<'p> MountTargetsMap<'p> {
 
         // checks:
         if !path.exists() {
-            panic!("cannot splat {}; does not exist", path.display());
-        }
-        if path.is_symlink() {
-            // TODO: warn about splatting a symlink!
+            panic!("cannot splat `{}`; does not exist", path.display());
         }
         if !path.is_dir() {
-            panic!("cannot splat {}; is not a directory", path.display());
+            panic!("cannot splat `{}`; is not a directory", path.display());
+        }
+        if path.is_symlink() {
+            warn!(
+                "splatting a symlink at `{}`; this will result in at least \
+                one level of symlinks being elided in the sandbox's filesystem",
+                path.display(),
+            )
         }
 
         // normally we'd avoid `read_dir` in favor of the underlying `libc`
@@ -835,7 +959,7 @@ impl<'p> MountTargetsMap<'p> {
             // it isn't worth it
             (inc @ Include { .. }, Exclude) => {
                 let Include { ref source_path } = inc else { unreachable!() };
-                debug!("warn: shadowing include at `{}` (custom source: {:?}) with exclude", full_dest_path.display(), source_path);
+                debug!("shadowing include at `{}` (custom source: {:?}) with exclude", full_dest_path.display(), source_path);
                 *inc = Exclude;
                 None
             },
@@ -849,7 +973,7 @@ impl<'p> MountTargetsMap<'p> {
                 )
             } else {
                 // duplicate but that's okay
-                debug!("warn: got duplicate bind mount for `{}` (with custom source {:?})", full_dest_path.display(), orig_source);
+                debug!("got duplicate bind mount for `{}` (with custom source {:?})", full_dest_path.display(), orig_source);
                 None
             }
 
@@ -862,13 +986,13 @@ impl<'p> MountTargetsMap<'p> {
             // (`/foo/bar/baz`))
             (exc @ Exclude, inc @ Include { .. }) => {
                 let Include { ref source_path } = inc else { unreachable!() };
-                debug!("warn: shadowing exclude at `{}` with bind mount (custom source: {:?})", full_dest_path.display(), source_path);
+                warn!("shadowing exclude at `{}` with bind mount (custom source: {:?})", full_dest_path.display(), source_path);
                 *exc = inc;
                 None
             }
             (Exclude, Exclude) => {
                 // duplicate but that's fine
-                debug!("warn: got duplicate exclude for `{}`", full_dest_path.display());
+                warn!("got duplicate exclude for `{}`", full_dest_path.display());
                 None
             }
 
@@ -947,8 +1071,8 @@ impl<'p> MountTargetsMap<'p> {
                         };
 
                         if !child_include_mount_source_path.exists() {
-                            debug!(
-                                "warn: bind mount at `{}` (custom source: {:?}) has a non-existent source!",
+                            warn!(
+                                "bind mount at `{}` (custom source: {:?}) has a non-existent source!",
                                 full_dest_path.display(), full_dest_custom_source_path,
                             )
                         }
@@ -1213,6 +1337,9 @@ impl<'p> MountTargetsMap<'p> {
     }
 }
 
+// see `linux-sandbox-pid1.cc`
+static EMPTY_FILE: &CStr = tree_macros::cstr_static_literal!("tmp/empty_file");
+
 impl<'p> MountTargetsMap<'p> {
     // note: time of check time of use bugs; we offer no guarantees about this
     // (we assume no mutation of the directory structure of the mounts while
@@ -1226,35 +1353,107 @@ impl<'p> MountTargetsMap<'p> {
     // that this is handled by Bazel when it assembles the list of mounts
     //
     // we will warn in debug mode though (TODO!)
-    #[allow(unused)]
     pub fn apply(self, sandbox_base: &Path) {
         // c string conversions necessary for passing the mount destination path
         // to syscalls (we need to prepend the sandbox base path)
+        //
+        // note: we prefer this instead of the `at` family of syscalls since
+        // we really are tacking things onto this path, segment by segment
+        //
+        // (also there is no `mountat` syscall)
         let mut dest_path = CStringGrowablePath::new(sandbox_base, true);
 
-        fn handle(node: &MountTargetNode, mut dest_path: ScopedPathAddition<'_, '_>) {
-            use MountTargetNode::*;
-            match &node {
-                Exclude => { /* nothing to do */ },
-                Include { source_path } => {
-                    let source = source_path.as_deref().map(|x| x.as_ref()).unwrap_or_else(|| dest_path.as_c_str());
-                    let source = cstring_as_path(source);
+        handle(&self.root, dest_path.scoped(), sandbox_base.len());
 
-                    fn stat(x: &Path) -> Option<()> { todo!() }
+        fn handle(
+            node: &MountTargetNode,
+            mut dest_path: ScopedPathAddition<'_, '_>,
+            sandbox_base_path_len: usize,
+        ) {
+            // we can strip the sandbox base from `dest_path` to get the dest
+            // path within the sandbox base — a.k.a. the default source path:
+            let dest_within_sandbox = {
+                let rest = &dest_path.as_c_str().to_bytes_with_nul()[sandbox_base_path_len..];
+                if rest.len() > 1 {
+                    // if the current dest path *is* the sandbox base this path
+                    // will be empty
+                    debug_assert_eq!(rest[0] as char, b'/' as char, "full dest path: {}", dest_path.as_c_str().display());
+                }
+                unsafe { CStr::from_bytes_with_nul_unchecked(rest) }
+            };
+
+            use MountTargetNode::*;
+            use colors::*;
+            match &node {
+                Exclude => {
+                    /* nothing to do */
+                    debug!("excluding path at `{}` (in sandbox: `{}`)", dest_within_sandbox.display(), dest_path.as_c_str().display());
+                },
+                Include { source_path: explicit_source } => {
+                    let implied_source = dest_within_sandbox;
+                    let source = explicit_source.as_deref().map(|x| x.as_ref()).unwrap_or_else(|| implied_source);
 
                     // debug check: if the parent of the source path has a
-                    // symlink anywhere, we've elided a level of symlinks; warn
+                    // symlink anywhere, we've elided a level of symlinks
+                    if_debug(|| {
+                        let Some(parent) = cstring_as_path(source).parent() else { return; };
+                        let Ok(canon) = parent.canonicalize() else { return; };
+                        if canon != parent { warn!(
+                            "mount with source `{}` (to destination `<sandbox>{}`) \
+                            contains a symlink somewhere in its ancestors! \
+                            \n  - parent of source:     `{par}` \
+                            \n  - actually resolves to: `{can}` \
+                            \n\n This will result in at least one level of \
+                            symlinks being elided in the sandbox's filesystem",
+                            source.display(), dest_within_sandbox.display(),
+                            par = parent.display(), can = canon.display(),
+                        ) }
+                    });
 
-                    match stat(source).unwrap() { // panic if source doesn't exist!
-                        is_dir => {
+                    // Warn and skip if the source doesn't exist!
+                    let Some(kind) = fs_utils::stat(source) else {
+                        warn!(
+                            "bind mount source at `{}` (to dest: `<sandbox>{}`) does not exist! Skipping this mount.",
+                            source.display(), dest_within_sandbox.display(),
+                        );
+                        return;
+                    };
+
+                    // debug print:
+                    if explicit_source.is_some() {
+                        debug!("{BOLD}mounting {kind:#}{RESET}: {} → <sandbox>{}", source.display(), dest_within_sandbox.display());
+                    } else {
+                        // dest is implied, skip it for clarity
+                        debug!("{BOLD}mounting {kind:#}{RESET}: {}", source.display());
+                    }
+
+                    // do the actual mount:
+                    match kind {
+                        Kind::Dir => {
                             // mkdir (should not already exist; just allow it if it already exists to accomodate dirty sandbox bases...)
                             // mount
+
+                            // note: we're not ensuring that the thing that exists
+                            // is a dir; if its not the mount will just fail.
+
+                            fs_utils::mkdir_idempotent(dest_path.as_c_str(), None);
+                            fs_utils::bind_mount(source, dest_path.as_c_str());
                         },
-                        is_file => {
-                            // touch (or rather hardlink the empty file?) | should not already exist
+                        Kind::File => {
+                            // touch (or rather hardlink the empty file?) | should not already exist, but allow it..
                             // mount
+
+                            // note: not ensuring that the thing that exists is
+                            // a file; mount will fail if its not
+
+                            // see `linux-sadbox-pid1.cc`; hardlinking is allegedly faster
+                            match unistd::linkat(None, EMPTY_FILE, None, dest_path.as_c_str(), unistd::LinkatFlags::NoSymlinkFollow) {
+                                Ok(()) | Err(Errno::EEXIST) => {},
+                                Err(e) => panic!("error creating empty file for bind mount: {e}"),
+                            }
+                            fs_utils::bind_mount(source, dest_path.as_c_str());
                         }
-                        is_symlink => {
+                        Kind::Symlink => {
                             // if we support MS_NOSYMFOLLOW?
                             //   + touch empty file (should not exist!)
                             //   + mount
@@ -1263,23 +1462,62 @@ impl<'p> MountTargetsMap<'p> {
                             // else:
                             //   + make symlink file with same dest (actually.. copy so we don't need another syscall to read the target of the symlink)
                             //     * also preserves relative/absolute symlink
+                            //     * edit: nvm, this still means we have to effectively make a new symlink
+                            //     * not going to bother preserving the time/ownership of the original symlink
                             //   + don't check if dest exists or not
                             //   + make readonly
+                            //     * nvm, perm bits are meaningless:
+                            //       https://superuser.com/questions/303040/how-do-file-permissions-apply-to-symlinks
+                            //     * they are relevant to deletion but only when
+                            //       parent dirs have the sticky bit set:
+                            //       https://linux.die.net/man/2/symlink
+
+                            // Note: this allocates instead of using a stack
+                            // buffer; not ideal but alas.
+                            let target = match fcntl::readlink(source) {
+                                Ok(symlink_target) => symlink_target,
+
+                                // https://man7.org/linux/man-pages/man2/readlink.2.html#ERRORS
+                                Err(err) => panic!(
+                                    "failed to read symbolic link at `{}` (for \
+                                    mount with destination: `<sandbox>{}`): \
+                                    {err}",
+                                    source.display(), dest_within_sandbox.display(),
+                                )
+                            };
+
+                            // todo: perf optimize
+                            let dest = cstring_as_path(dest_path.as_c_str());
+                            if dest.exists() {
+                                if dest.is_file() || dest.is_symlink() {
+                                    fs::remove_file(dest).unwrap();
+                                } else {
+                                    warn!("target of mount `{}` already exists and is not a file or symlink", dest.display());
+                                }
+                            }
+
+                            // no issues with relative symlinks
+                            // https://man7.org/linux/man-pages/man2/symlink.2.html
+                            //
+                            // note: we're leaving more perf on the table here:
+                            // because `target` is an `OsString`, `NixPath` will
+                            // do a stack copy so it can ensure null termination
+                            //
+                            // if we decide to make replace `readlink` with a
+                            // version that uses a stack allocation, we can
+                            // "fix" this too (TODO: perf opt)
+                            unistd::symlinkat(&*target, None, dest_path.as_c_str()).unwrap();
                         }
                     }
                 },
                 Neutral { children } => {
-                    // assert that children is never empty; can't have a neutral
-                    // node otherwise.. (todo: what about the root node?)
-                    // yeah okay, don't bother
+                    fs_utils::mkdir_idempotent(dest_path.as_c_str(), None);
 
                     for (segment, child) in children {
                         let dest_path = dest_path.push(segment);
-                        handle(child, dest_path)
+                        handle(child, dest_path, sandbox_base_path_len)
                     }
 
-                    // push
-                    //
                     // mkdir sandbox_base + node.path (ensure dest does not
                     // exist / is a dir?)
                     //  - ideally we'd check that the dest is not a mountpoint
@@ -1289,6 +1527,8 @@ impl<'p> MountTargetsMap<'p> {
                     //    that resulted in this node existing may all have
                     //    sources that don't contain `node.path`
                     //
+                    // push
+                    //
                     // run `handle` for each child
                 }
             }
@@ -1296,16 +1536,20 @@ impl<'p> MountTargetsMap<'p> {
     }
 }
 
+mod colors {
+    pub const RESET: &str = "\x1b[0m";
+    pub const BOLD: &str = "\x1b[1m";
+    pub const ITALICS: &str = "\x1b[3m";
+    pub const RED: &str = "\x1b[31m";
+    pub const YELLOW: &str = "\x1b[33m";
+    pub const BLUE: &str = "\x1b[34m";
+    pub const PURPLE: &str = "\x1b[35m";
+}
 
 // tree style output
 impl fmt::Display for MountTargetsMap<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        const RESET: &str = "\x1b[0m";
-        const BOLD: &str = "\x1b[1m";
-        const ITALICS: &str = "\x1b[3m";
-        const RED: &str = "\x1b[31m";
-        const BLUE: &str = "\x1b[34m";
-        const PURPLE: &str = "\x1b[35m";
+        use colors::*;
 
         fn print_indents(f: &mut fmt::Formatter<'_>, indents: &[bool]) -> fmt::Result {
             let Some((&last, indents)) = indents.split_last() else {
@@ -1443,6 +1687,7 @@ mod tree_macros {
     pub use crate::cstr_static_literal;
 }
 
+////////////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
 extern "C" fn test() {
@@ -1540,26 +1785,34 @@ unsafe extern "C" fn handle_mounts<'p>(
     });
     mounts.extend(bind_mounts.chain(hard_excludes));
 
-    let soft_excludes = soft_excludes.iter().map(|&path| {
+    let mut soft_excludes = soft_excludes.iter().map(|&path| {
         unsafe { CStr::from_ptr::<'p>(path) }
-    });
+    }).collect();
 
-    apply_mounts_inner(sandbox_base_path, &mut mounts, soft_excludes)
+    apply_mounts_inner(sandbox_base_path, &mut mounts, &mut soft_excludes)
 }
 
 fn apply_mounts_inner<'p>(
     sandbox_base_path: &'p CStr,
-    mut mounts: &mut Vec<Mount<'p>>,
-    soft_excludes: impl Iterator<Item = &'p CStr>,
+    mounts: &mut Vec<Mount<'p>>,
+    soft_excludes: &mut Vec<&'p CStr>,
 ) {
 
     // bind mounts and hard excludes:
     {
         let mut mount_map = MountTargetsMap::new();
-        mount_map.insert_paths(&mut mounts);
+        mount_map.insert_paths(mounts);
 
-        debug!("mount map:\n{mount_map:#}\n");
+        debug!("mount map:\n{mount_map:#}\n\n");
 
+        // Prune excludes (to potentially speed up apply a little bit? unsure;
+        // this lets us skip creating only-excluded parent dirs) and print out
+        // the excluded paths up-front:
+        mount_map.prune_excludes_with_callback(if_debug(|| {
+            |x: &CStr| debug!("excluding path: {}", x.display())
+        }));
+
+        // apply!
         mount_map.apply(cstring_as_path(sandbox_base_path));
     }
 
@@ -1574,6 +1827,7 @@ fn apply_mounts_inner<'p>(
             // if dir: mount empty dir
 
             // debug: if symlink: yell
+            // debug: if beneath symlink: yell
             // debug print excluding ...
             // debug: add to soft exclude tree... (with the file/dir as mount source)
         }
