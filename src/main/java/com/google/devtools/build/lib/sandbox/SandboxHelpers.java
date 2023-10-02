@@ -746,7 +746,7 @@ public final class SandboxHelpers {
                     try {
                       resolvedParentPath = path.getParentDirectory().resolveSymbolicLinks();
                     } catch (IOException ex) {
-                      logger.atWarning().log("exception will resolving path `%s`: %s", path, ex);
+                      logger.atWarning().log("exception while resolving path `%s`: %s", path, ex);
                       resolvedParentPath = path.getParentDirectory();
                     }
 
