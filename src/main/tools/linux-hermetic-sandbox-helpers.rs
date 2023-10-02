@@ -13,7 +13,7 @@ use nix::{NixPath, dir, fcntl::{OFlag, self}, sys::stat::Mode, unistd, errno::Er
 
 use crate::{utils::{
     CStrNewType, OsStrDisplayExt, cstring_as_path, CStringGrowablePath,
-    ScopedPathAddition, debug, if_debug,
+    ScopedPathAddition, if_debug,
 }, fs_utils::Kind};
 
 mod utils {
@@ -1129,7 +1129,7 @@ impl<'p> MountTargetsMap<'p> {
 
         // entry merge (see above)
 
-        // note: sort mounts lexicographically by dest? and then by exclude > include (i.e. excludes after includes)
+        // note: sort mounts lexicographically by dest? and then by exclude < include (i.e. excludes before includes)
         //   - handled by `insert_paths`
         // note: assert path is absolute
 
@@ -1606,7 +1606,12 @@ impl fmt::Display for MountTargetsMap<'_> {
                     let source = cstring_as_path(source);
                     let symlink = fs::read_link(source);
 
-                    let color = if symlink.is_ok() { PURPLE } else { RESET };
+                    let color = match fs_utils::stat(&::std::ffi::CString::new(source.as_os_str().as_bytes()).unwrap()) {
+                        Some(Kind::Dir) => BLUE,
+                        Some(Kind::Symlink) => PURPLE,
+                        Some(_) => RESET,
+                        None => RED,
+                    };
                     write!(f, "{color}{}{RESET}", seg.display())?;
 
                     if let Ok(symlink_dest) = symlink {
@@ -1678,9 +1683,9 @@ mod tree_macros {
     }
 
     pub use MountTargetNode::Exclude as Exc;
-    #[allow(bad_style)]
+    #[allow(bad_style, unused)]
     pub const Inc: MountTargetNode = MountTargetNode::Include { source_path: None };
-    #[allow(bad_style)]
+    #[allow(bad_style, unused)]
     pub fn IncWith(p: &'_ (impl AsRef<OsStr> + ?Sized)) -> MountTargetNode<'static> {
         MountTargetNode::Include { source_path: Some(Cow::Owned(CStringGrowablePath::new(p.as_ref(), false))) }
     }
@@ -1706,33 +1711,6 @@ mod tree_macros {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-#[no_mangle]
-extern "C" fn test() {
-    debug!("heyyyy");
-
-    use tree_macros::*;
-    let mut map: MountTargetsMap = dir! {
-        foo: Exc,
-        bar: IncWith("/tmp/bar"),
-        baz: Inc,
-        quux: dir! {
-            blah: Exc,
-            blue: IncWith("/tmp/foo/bar"),
-            bleh: dir! { keep: Inc },
-            blee: Exc,
-        }
-    }.into();
-
-    debug(|out| {
-        writeln!(out, "mount map:\n{:#}\n", map).unwrap();
-
-        map.prune_excludes_with_callback(Some(|x: &CStr| eprintln!("excluding path: {}", x.display())));
-        writeln!(out, "mount map:\n{:#}\n", map).unwrap();
-    });
-
-    // panic!();
-}
 
 #[no_mangle]
 unsafe extern "C" fn handle_mounts<'p>(
@@ -1872,7 +1850,7 @@ fn apply_mounts_inner<'p>(
     // soft excludes:
     {
         // we'll sort soft excludes so that there's at least _some_ consistency:
-        soft_excludes.sort();
+        soft_excludes.sort_unstable();
 
         // Note: if a `mountat` syscall existed (in the style of `fstatat`) we'd
         // use it here; it'd let us avoid allocating to prefix the soft exclude
