@@ -1249,16 +1249,16 @@ impl<'p> PartialOrd for Mount<'p> {
             other => return other,
         }
 
-        // then compare exclude vs. include; exclude is greater than include:
+        // then compare exclude vs. include; exclude is less than include:
         let is_exclude = matches!(self, HardExclude { .. });
         let other_is_exclude = matches!(other, HardExclude { .. });
         Some(match (is_exclude, other_is_exclude) {
             // could do a tie-breaker on `other_dest` but not going to bother
             (true, true) | (false, false) => Equal,
-            // exclude is greater than include (should come _afterwards_ when
-            // applying mounts)
-            (true, false) => Greater,
-            (false, true) => Less,
+            // exclude is less than include (includes should come _afterwards_
+            // when applying mounts)
+            (true, false) => Less,
+            (false, true) => Greater,
         })
     }
 }
