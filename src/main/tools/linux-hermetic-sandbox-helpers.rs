@@ -1797,9 +1797,31 @@ fn apply_mounts_inner<'p>(
     mounts: &mut Vec<Mount<'p>>,
     soft_excludes: &mut Vec<&'p CStr>,
 ) {
+    use colors::{BOLD, BLUE, RESET, RED};
 
     // bind mounts and hard excludes:
     {
+        // Check that mounts do not have *sources* beneath the sandbox base:
+        if_debug(|| {
+            for m in mounts.iter() {
+                if let Mount::Include { dest, explicit_src: Some(src) } = m {
+                    if cstring_as_path(src).starts_with(cstring_as_path(sandbox_base_path)) {
+                        warn!(
+                            "{}bind mount source is beneath the sandbox base!{} \
+                            \n    - bind mount from `{}` to `<sandbox>{}`\
+                            \n    - if the source is itself a bind mount \
+                            target this will lead to unpredictable behavior; \
+                            bind mount ordering is not preserved and mounts are \
+                            created in a topological order that's not \
+                            deterministic (due to hashmap iteration ordering)",
+                            RED, RESET,
+                            src.display(), dest.display(),
+                        );
+                    }
+                }
+            }
+        });
+
         let mut mount_map = MountTargetsMap::new();
         mount_map.insert_paths(mounts);
 
