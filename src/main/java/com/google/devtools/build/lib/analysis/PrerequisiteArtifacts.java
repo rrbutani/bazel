@@ -75,6 +75,18 @@ public final class PrerequisiteArtifacts {
     return result.build();
   }
 
+  public static NestedSet<Artifact> nestedSetWithRunfiles(RuleContext ruleContext, String attributeName) {
+    NestedSetBuilder<Artifact> result = NestedSetBuilder.stableOrder();
+    for (FileProvider target : ruleContext.getPrerequisites(attributeName, FileProvider.class)) {
+      result.addTransitive(target.getFilesToBuild());
+    }
+    for (RunfilesProvider runfiles : ruleContext.getPrerequisites(attributeName, RunfilesProvider.class)) {
+      result.addTransitive(runfiles.getDataRunfiles().getAllArtifacts());
+    }
+
+    return result.build();
+  }
+
   /**
    * Returns the artifacts this instance contains in an {@link ImmutableList}.
    */
