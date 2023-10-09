@@ -125,11 +125,11 @@ public class StandaloneTestStrategy extends TestStrategy {
                 .getLocalResourceUsage(
                     action.getOwner().getLabel(), executionOptions.usingLocalTestJobs());
 
-    RunfilesTree testRunfilesTree =
-        actionExecutionContext
-            .getInputMetadataProvider()
-            .getRunfilesMetadata(action.getRunfilesMiddleman())
-            .getRunfilesTree();
+    // RunfilesTree testRunfilesTree =
+    //     actionExecutionContext
+    //         .getInputMetadataProvider()
+    //         .getRunfilesMetadata(action.getRunfilesMiddleman())
+    //         .getRunfilesTree();
 
     Spawn spawn =
         new SimpleSpawn(
@@ -137,7 +137,8 @@ public class StandaloneTestStrategy extends TestStrategy {
             getArgs(action),
             ImmutableMap.copyOf(testEnvironment),
             ImmutableMap.copyOf(executionInfo),
-            CompositeRunfilesSupplier.fromRunfilesTrees(ImmutableList.of(testRunfilesTree)),
+            // CompositeRunfilesSupplier.fromRunfilesTrees(ImmutableList.of(testRunfilesTree)),
+            action.getRunfilesSupplier(),
             ImmutableMap.of(),
             /* inputs= */ action.getInputs(),
             NestedSetBuilder.emptySet(Order.STABLE_ORDER),
@@ -473,10 +474,13 @@ public class StandaloneTestStrategy extends TestStrategy {
         // Pass the execution info of the action which is identical to the supported tags set on the
         // test target. In particular, this does not set the test timeout on the spawn.
         ImmutableMap.copyOf(executionInfo),
-        null,
+        action.getXmlGeneratorRunfilesSupplier(),
         ImmutableMap.of(),
-        /*inputs=*/ NestedSetBuilder.create(
-            Order.STABLE_ORDER, action.getTestXmlGeneratorScript(), action.getTestLog()),
+        /*inputs=*/ NestedSetBuilder.<ActionInput>compileOrder()
+            .add(action.getTestXmlGeneratorScript()) // TODO: redundant?
+            .addTransitive(action.getXmlGeneratorFilesToRun().build())
+            .add(action.getTestLog())
+            .build(),
         /*tools=*/ NestedSetBuilder.emptySet(Order.STABLE_ORDER),
         /*outputs=*/ ImmutableSet.of(ActionInputHelper.fromPath(action.getXmlOutputPath())),
         /*mandatoryOutputs=*/ null,

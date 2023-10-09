@@ -169,6 +169,9 @@ public class TestRunnerAction extends AbstractAction
   private final NestedSetBuilder<Artifact> lcovMergerFilesToRun;
   @Nullable private final Artifact lcovMergerRunfilesMiddleman;
 
+  private final NestedSetBuilder<Artifact> xmlGeneratorFilesToRun;
+  private final RunfilesSupplier xmlGeneratorRunfilesSupplier;
+
   // TODO(b/192694287): Remove once we migrate all tests from the allowlist.
   private final PackageSpecificationProvider networkAllowlist;
 
@@ -215,6 +218,8 @@ public class TestRunnerAction extends AbstractAction
       boolean splitCoveragePostProcessing,
       NestedSetBuilder<Artifact> lcovMergerFilesToRun,
       @Nullable Artifact lcovMergerRunfilesMiddleman,
+      NestedSetBuilder<Artifact> xmlGeneratorFilesToRun,
+      RunfilesSupplier xmlGeneratorRunfilesSupplier, // TODO(rrbutani, rebase): consider taking middleman instead
       PackageSpecificationProvider networkAllowlist,
       boolean isExecutedOnWindows) {
     super(
@@ -275,6 +280,8 @@ public class TestRunnerAction extends AbstractAction
     this.splitCoveragePostProcessing = splitCoveragePostProcessing;
     this.lcovMergerFilesToRun = lcovMergerFilesToRun;
     this.lcovMergerRunfilesMiddleman = lcovMergerRunfilesMiddleman;
+    this.xmlGeneratorFilesToRun = xmlGeneratorFilesToRun;
+    this.xmlGeneratorRunfilesSupplier = xmlGeneratorRunfilesSupplier;
     this.networkAllowlist = networkAllowlist;
 
     // Mark all possible test outputs for deletion before test execution.
@@ -350,6 +357,15 @@ public class TestRunnerAction extends AbstractAction
   public NestedSetBuilder<Artifact> getLcovMergerFilesToRun() {
     return lcovMergerFilesToRun;
   }
+
+  public RunfilesSupplier getXmlGeneratorRunfilesSupplier() {
+    return xmlGeneratorRunfilesSupplier;
+  }
+
+  public NestedSetBuilder<Artifact> getXmlGeneratorFilesToRun() {
+    return xmlGeneratorFilesToRun;
+  }
+
 
   public Artifact getCoverageDirectoryTreeArtifact() {
     return coverageDirectory;

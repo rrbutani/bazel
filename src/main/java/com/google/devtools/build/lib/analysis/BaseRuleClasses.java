@@ -211,11 +211,13 @@ public class BaseRuleClasses {
           .add(
               attr("$test_wrapper", LABEL)
                   .cfg(ExecutionTransitionFactory.createFactory())
+                  .exec()
                   .singleArtifact()
                   .value(env.getToolsLabel("//tools/test:test_wrapper")))
           .add(
               attr("$xml_writer", LABEL)
                   .cfg(ExecutionTransitionFactory.createFactory())
+                  .exec()
                   .singleArtifact()
                   .value(env.getToolsLabel("//tools/test:xml_writer")))
           .add(
@@ -225,16 +227,19 @@ public class BaseRuleClasses {
           .add(
               attr("$test_setup_script", LABEL)
                   .cfg(ExecutionTransitionFactory.createFactory())
+                  .exec()
                   .singleArtifact()
                   .value(env.getToolsLabel("//tools/test:test_setup")))
           .add(
               attr("$xml_generator_script", LABEL)
                   .cfg(ExecutionTransitionFactory.createFactory())
+                  .exec()
                   .singleArtifact()
                   .value(env.getToolsLabel("//tools/test:test_xml_generator")))
           .add(
               attr("$collect_coverage_script", LABEL)
                   .cfg(ExecutionTransitionFactory.createFactory())
+                  .exec()
                   .singleArtifact()
                   .value(env.getToolsLabel("//tools/test:collect_coverage")))
           // Input files for test actions collecting code coverage
