@@ -146,48 +146,51 @@ public class Filegroup implements RuleConfiguredTargetFactory {
 
       boolean empty = excludeInfo.hardExcludes.isEmpty() && excludeInfo.softExcludes.isEmpty();
 
-      // These are only value if there's a single source and no data elements
-      // in the file group:
-      if (!empty && !filesToBuild.isSingleton()) {
-        throw ruleContext.throwWithRuleError(
-          "hard and soft excludes can only be specified when there " +
-          "is a *single* directory source in `srcs`; we got " + filesToBuild.toList().size() +
-          " sources"
-        );
+      if (!empty) {
+
+        // These are only valid if there's a single source and no data elements
+        // in the file group:
+        if (!filesToBuild.isSingleton()) {
+          throw ruleContext.throwWithRuleError(
+            "hard and soft excludes can only be specified when there " +
+            "is a *single* directory source in `srcs`; we got " +
+            filesToBuild.toList().size() + " sources"
+          );
+        }
+
+        Artifact single = filesToBuild.getSingleton();
+        Label label = single.getArtifactOwner().getLabel();
+        if (!single.isSourceArtifact()) {
+          throw ruleContext.throwWithAttributeError("srcs",
+            "hard and soft excludes can only be specified when there " +
+            "is a single *directory source* in `srcs`; " + label.toString() +
+            " is not a source artifact"
+          );
+        }
+
+        // TODO: check that this is a directory...
+        //
+        // for now this check is deferred to execution (during which users will
+        // get a warning that the excludes are ignored if the source artifact
+        // they're tied to is not a directory)
+
+        // NOTE: this is somewhat dangerous!
+        //
+        // we're modifying an artifact that isn't created by us; this means that
+        // if multiple filegroups (for example) specify excludes for this source
+        // artifact, they'll conflict (all will try to modify this source
+        // artifact)!
+        //
+        // further, I think this is actually an incrementality hazard...
+        //
+        // TODO: at least guard against this (i.e. store label indicating who set
+        // the info)
+        SourceArtifact dir = (SourceArtifact)single;
+        dir.setHardExcludes(ImmutableSet.copyOf(excludeInfo.hardExcludes));
+        dir.setSoftExcludes(ImmutableSet.copyOf(excludeInfo.softExcludes));
+
+        filesToBuild = NestedSetBuilder.create(Order.STABLE_ORDER, dir);
       }
-
-      Artifact single = filesToBuild.getSingleton();
-      Label label = single.getArtifactOwner().getLabel();
-      if (!single.isSourceArtifact()) {
-        throw ruleContext.throwWithAttributeError("srcs",
-          "hard and soft excludes can only be specified when there " +
-          "is a single *directory source* in `srcs`; " + label.toString() +
-          " is not a source artifact"
-        );
-      }
-
-      // TODO: check that this is a directory...
-      //
-      // for now this check is deferred to execution (during which users will
-      // get a warning that the excludes are ignored if the source artifact
-      // they're tied to is not a directory)
-
-      // NOTE: this is somewhat dangerous!
-      //
-      // we're modifying an artifact that isn't created by us; this means that
-      // if multiple filegroups (for example) specify excludes for this source
-      // artifact, they'll conflict (all will try to modify this source
-      // artifact)!
-      //
-      // further, I think this is actually an incrementality hazard...
-      //
-      // TODO: at least guard against this (i.e. store label indicating who set
-      // the info)
-      SourceArtifact dir = (SourceArtifact)single;
-      dir.setHardExcludes(ImmutableSet.copyOf(excludeInfo.hardExcludes));
-      dir.setSoftExcludes(ImmutableSet.copyOf(excludeInfo.softExcludes));
-
-      filesToBuild = NestedSetBuilder.create(Order.STABLE_ORDER, dir);
     }
 
     InstrumentedFilesInfo instrumentedFilesProvider =
