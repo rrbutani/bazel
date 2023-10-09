@@ -115,9 +115,10 @@ abstract class AbstractSandboxSpawnRunner implements SpawnRunner {
         return runSpawn(spawn, sandbox, context);
       }
     } catch (IOException e) {
+      e.printStackTrace();
       String msg = String.format(
         "I/O exception during sandboxed execution; invocation = %s",
-        sandbox == null ? "unknown" : sandbox.getArguments().toString()
+        sandbox == null ? "unknown" : String.join(" ", sandbox.getArguments())
       );
 
       FailureDetail failureDetail =
@@ -234,6 +235,10 @@ abstract class AbstractSandboxSpawnRunner implements SpawnRunner {
       msg.append(exceptionMsg);
       msg.append("\n");
       if (!sandboxDebugOutput.isEmpty()) {
+        msg.append("Sandbox invocation:\n");
+        msg.append(String.join(" ", sandbox.getArguments()));
+        msg.append("\n");
+
         msg.append("Sandbox debug output:\n");
         msg.append(sandboxDebugOutput);
         msg.append("\n");
@@ -302,16 +307,23 @@ abstract class AbstractSandboxSpawnRunner implements SpawnRunner {
       spawnResultBuilder.setFailureDetail(failureDetail);
     }
 
+
+    StringBuilder invocation = new StringBuilder();
+    invocation.append("Sandbox invocation:\n");
+    invocation.append(String.join(" ", sandbox.getArguments()));
+    invocation.append("\n");
+
     String sandboxDebugOutput = getSandboxDebugOutput(sandbox);
     if (!sandboxDebugOutput.isEmpty()) {
       reporter.handle(
           Event.of(
               EventKind.DEBUG,
               String.format(
-                  "Sandbox debug output for %s %s:\n%s",
+                  "Sandbox debug output for %s %s:\n%s\n\n%s",
                   originalSpawn.getMnemonic(),
                   originalSpawn.getTargetLabel(),
-                  sandboxDebugOutput)));
+                  sandboxDebugOutput,
+                  invocation)));
     }
 
     Path statisticsPath = sandbox.getStatisticsPath();
