@@ -25,6 +25,7 @@ import com.google.devtools.build.lib.actions.ActionInput;
 import com.google.devtools.build.lib.actions.ActionOwner;
 import com.google.devtools.build.lib.actions.Artifact;
 import com.google.devtools.build.lib.actions.ArtifactRoot;
+import com.google.devtools.build.lib.actions.CompositeRunfilesSupplier;
 import com.google.devtools.build.lib.actions.RunfilesSupplier;
 import com.google.devtools.build.lib.analysis.Allowlist;
 import com.google.devtools.build.lib.analysis.AnalysisEnvironment;
@@ -209,7 +210,7 @@ public final class TestActionBuilder {
 
     if (!isUsingTestWrapperInsteadOfTestSetupScript) {
       NestedSet<Artifact> testRuntime =
-          PrerequisiteArtifacts.nestedSet(ruleContext, "$test_runtime");
+          PrerequisiteArtifacts.nestedSetWithRunfiles(ruleContext, "$test_runtime");
       inputsBuilder.addTransitive(testRuntime);
     }
     TestTargetProperties testProperties =
@@ -219,17 +220,62 @@ public final class TestActionBuilder {
     final boolean collectCodeCoverage = config.isCodeCoverageEnabled()
         && instrumentedFiles != null;
 
-    Artifact testActionExecutable =
-        isUsingTestWrapperInsteadOfTestSetupScript
-            ? ruleContext.getPrerequisiteArtifact("$test_wrapper")
-            : ruleContext.getPrerequisiteArtifact("$test_setup_script");
+    String testActionExecutableAttr = isUsingTestWrapperInsteadOfTestSetupScript
+        ? "$test_wrapper"
+        : "$test_setup_script";
+    FilesToRunProvider testActionFilesToRun =
+        ruleContext.getExecutablePrerequisite(testActionExecutableAttr);
+    Artifact testActionExecutable = testActionFilesToRun.getExecutable();
+    RunfilesSupplier testActionRunfilesSupplier = testActionFilesToRun.getRunfilesSupplier();
+    inputsBuilder.addTransitive(testActionFilesToRun.getFilesToRun());
+    if (testActionFilesToRun.getRunfilesSupport() != null) {
+      inputsBuilder.add(testActionFilesToRun.getRunfilesSupport().getRunfilesMiddleman());
 
-    inputsBuilder.add(testActionExecutable);
-    Artifact testXmlGeneratorExecutable =
-        isUsingTestWrapperInsteadOfTestSetupScript
-            ? ruleContext.getPrerequisiteArtifact("$xml_writer")
-            : ruleContext.getPrerequisiteArtifact("$xml_generator_script");
-    inputsBuilder.add(testXmlGeneratorExecutable);
+      // NOTE: `FilesToRun` (as compared to the other runfiles here) does not
+      // include deps; this is why we need this:
+      inputsBuilder.addTransitive(testActionFilesToRun.getRunfilesSupport().getRunfilesArtifacts());
+    }
+
+    // it seems like filegroups don't assemble their own FilesToRunProvider that
+    // has runfiles with `data` in them
+    //
+    // but I *think* the runfiles from a filegroup (not via `FilesToRunProvider`
+    // which I guess comes from the underlying artifact?) would have the items
+    // in `data`?
+    /*
+    var info = ruleContext.getPrerequisite(testActionExecutableAttr);
+    var runfiles = info.getProvider(RunfilesProvider.class);
+    */
+    // update: yes
+
+    String testActionXmlGeneratorAttr = isUsingTestWrapperInsteadOfTestSetupScript
+        ? "$xml_writer"
+        : "$xml_generator_script";
+    FilesToRunProvider testActionXmlGeneratorFilesToRun =
+        ruleContext.getExecutablePrerequisite(testActionXmlGeneratorAttr);
+    Artifact testXmlGeneratorExecutable = testActionXmlGeneratorFilesToRun.getExecutable();
+    RunfilesSupplier xmlGeneratorRunfilesSupplier = testActionXmlGeneratorFilesToRun.getRunfilesSupplier();
+    NestedSetBuilder<Artifact> xmlGeneratorFilesToRun = NestedSetBuilder.compileOrder();
+    {
+      xmlGeneratorFilesToRun.addTransitive(testActionXmlGeneratorFilesToRun.getFilesToRun());
+      if (testActionXmlGeneratorFilesToRun.getRunfilesSupport() != null) {
+        xmlGeneratorFilesToRun.add(testActionXmlGeneratorFilesToRun.getRunfilesSupport().getRunfilesMiddleman());
+      }
+
+      // NOTE: not pulling the artifacts from runfiles support into `inputsBuilder`
+      // because — for the xml generating action — this get extracted out of
+      // `xmlGeneratorRunfilesSupplier` when the spawn is created..
+
+      // no need to copy artifacts to `inputsBuilder`; the xml generator's deps
+      // aren't needed for the main test runner action
+      //
+      // actually: we'll do it anyways in case we're not using split xml
+      // generation (and because it seems like the artifacts are not built if
+      // they're not specified here? because this determines what inputs the
+      // action that's created has? (xml is a separate spawn, technically))
+      inputsBuilder.addTransitive(xmlGeneratorFilesToRun.build());
+      inputsBuilder.addTransitive(xmlGeneratorRunfilesSupplier.getArtifacts());
+    }
 
     Artifact collectCoverageScript = null;
     TreeMap<String, String> extraTestEnv = new TreeMap<>();
@@ -371,6 +417,15 @@ public final class TestActionBuilder {
       testRunfilesSupplier = runfilesSupport;
     }
 
+    // Add the test setup script's runfiles to the runfiles supplier:
+    //
+    // (note: not caching; don't know how to get the necessary args out of the
+    // runfiles supplier that we get for the setup script (not a RunfileSupport
+    // ))
+    testRunfilesSupplier = CompositeRunfilesSupplier.of(
+      testRunfilesSupplier, testActionRunfilesSupplier
+    );
+
     ActionOwner actionOwner =
         testConfiguration.useTargetPlatformForTests() ? getTestActionOwner() : getOwner();
 
@@ -449,6 +504,8 @@ public final class TestActionBuilder {
                 splitCoveragePostProcessing,
                 lcovMergerFilesToRun,
                 lcovMergerRunfilesSupplier,
+                xmlGeneratorFilesToRun,
+                xmlGeneratorRunfilesSupplier,
                 // Network allowlist only makes sense in workspaces which explicitly add it, use an
                 // empty one as a fallback.
                 MoreObjects.firstNonNull(
