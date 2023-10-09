@@ -68,7 +68,7 @@ public final class SingleRunfilesSupplier implements RunfilesSupplier {
    * Create an instance mapping {@code runfiles} to {@code runfilesDir}.
    *
    * @param runfilesDir the desired runfiles directory. Should be relative.
-   * @param runfiles the runfiles for runilesDir.
+   * @param runfiles the runfiles for runfilesDir.
    * @param runfileSymlinksMode how to create runfile symlinks
    * @param buildRunfileLinks whether runfile symlinks should be created during the build
    */
