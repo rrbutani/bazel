@@ -784,7 +784,7 @@ public final class SandboxHelpers {
                       resolvedPath = path;
                     }
 
-                    if (resolvedPath != path) {
+                    if (!resolvedPath.equals(path)) {
                       String msg = String.format(
                         "Soft excludes should not contain symbolic links but " +
                         "exclude `%s` (beneath `%s` from `%s`) does; absolute path " +
