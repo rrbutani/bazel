@@ -354,7 +354,7 @@ public class SandboxOptions extends OptionsBase {
 
   @Option(
       name = "incompatible_sandbox_hermetic_tmp",
-      defaultValue = "true",
+      defaultValue = "false", // !!! fix
       documentationCategory = OptionDocumentationCategory.EXECUTION_STRATEGY,
       effectTags = {OptionEffectTag.EXECUTION},
       help =

@@ -203,14 +203,23 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
   }
 
   private boolean useHermeticTmp() {
-    if (!getSandboxOptions().sandboxHermeticTmp) {
-      // No hermetic /tmp requested, so let's not do it
-      return false;
-    }
 
     if (getSandboxOptions().useHermetic) {
       // The hermetic sandbox is, well, already hermetic. Also, it creates an empty /tmp by default
       // so nothing needs to be done to achieve a /tmp that is also hermetic.
+
+      // !! TODO(rrbutani): this is a bit of a hack
+
+      // the above is _technically_ true but...
+      //
+      // unfortunately bind mount logic has conflated the execroot pivot
+      // (hermetic sandbox) and hermetic tmp; for now do the hermetic tmp setup
+      // if using the hermetic sandbox
+      return true;
+    }
+
+    if (!getSandboxOptions().sandboxHermeticTmp) {
+      // No hermetic /tmp requested, so let's not do it
       return false;
     }
 
@@ -366,7 +375,16 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
         // expects host paths for the working directory!
         commandLineBuilder.setWorkingDirectory(sandboxExecRoot);
       } else {
-        commandLineBuilder.setWorkingDirectory(withinSandboxWorkingDirectory);
+        // TODO: is this necessary? (does it have to be different than ^)
+        // commandLineBuilder.setWorkingDirectory(sandboxTmp
+        //   // .getRelative(withinSandboxWorkingDirectory.asFragment())
+        //   .getRelative(BAZEL_WORKING_DIRECTORY)
+        //   .getRelative(workspaceName)
+        // );
+
+        commandLineBuilder.setWorkingDirectory(sandboxExecRoot);
+
+        // commandLineBuilder.setWorkingDirectory(withinSandboxWorkingDirectory);
       }
     }
 
