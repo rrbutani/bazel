@@ -210,7 +210,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     if (getSandboxOptions().useHermetic) {
       // The hermetic sandbox is, well, already hermetic. Also, it creates an empty /tmp by default
       // so nothing needs to be done to achieve a /tmp that is also hermetic.
-      return false;
+      return true; // !! TODO: this is a bit of a hack
     }
 
     boolean tmpExplicitlyBindMounted =
@@ -380,7 +380,16 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
         // expects host paths for the working directory!
         commandLineBuilder.setWorkingDirectory(sandboxExecRoot);
       } else {
-        commandLineBuilder.setWorkingDirectory(withinSandboxWorkingDirectory);
+        // TODO: is this necessary? (does it have to be different than ^)
+        // commandLineBuilder.setWorkingDirectory(sandboxTmp
+        //   // .getRelative(withinSandboxWorkingDirectory.asFragment())
+        //   .getRelative(BAZEL_WORKING_DIRECTORY)
+        //   .getRelative(workspaceName)
+        // );
+
+        commandLineBuilder.setWorkingDirectory(sandboxExecRoot);
+
+        // commandLineBuilder.setWorkingDirectory(withinSandboxWorkingDirectory);
       }
     }
 
