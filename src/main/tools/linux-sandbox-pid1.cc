@@ -86,9 +86,11 @@ static void CreateFile(const char *path) {
 // Creates an empty file at 'path' by hard linking it from a known empty file.
 // This is over two times faster than creating empty files via open() on
 // certain filesystems (e.g. XFS).
-static void LinkFile(const char *path) {
+static void LinkFile(const char *path, bool error_on_failure = true) {
   if (link("tmp/empty_file", path) < 0) {
-    DIE("link %s", path);
+    if (error_on_failure) {
+      DIE("link %s", path);
+    }
   }
 }
 
@@ -417,7 +419,9 @@ static void MountProc() {
   if (opt.hermetic) {
     proc_dest = opt.sandbox_root + "/proc";
     if (mkdir(proc_dest.c_str(), 0755) < 0) {
-      DIE("mkdir(%s)", proc_dest.c_str());
+      if (errno != EEXIST) {
+        DIE("mkdir(%s)", proc_dest.c_str());
+      }
     }
   }
 
@@ -588,13 +592,14 @@ static void MountDev() {
   const char *devs[] = {"/dev/null", "/dev/random", "/dev/urandom", "/dev/zero",
                         NULL};
   for (int i = 0; devs[i] != NULL; i++) {
-    LinkFile(devs[i] + 1);
+    LinkFile(devs[i] + 1, false);
     if (mount(devs[i], devs[i] + 1, NULL, MS_BIND, NULL) < 0) {
       DIE("mount");
     }
   }
   if (symlink("/proc/self/fd", "dev/fd") < 0) {
-    DIE("symlink");
+    // DIE("symlink");
+    PRINT_DEBUG("failed to make symlink: /proc/self/fd -> dev/fd");
   }
 }
 
