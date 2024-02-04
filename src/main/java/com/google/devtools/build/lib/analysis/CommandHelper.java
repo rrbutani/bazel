@@ -22,6 +22,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.devtools.build.lib.actions.Artifact;
 import com.google.devtools.build.lib.actions.ExecutionRequirements;
+import com.google.devtools.build.lib.actions.RunfilesSupplier;
 import com.google.devtools.build.lib.cmdline.Label;
 import com.google.devtools.build.lib.collect.nestedset.NestedSet;
 import com.google.devtools.build.lib.collect.nestedset.NestedSetBuilder;
@@ -34,6 +35,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
+import net.starlark.java.eval.Sequence;
+import net.starlark.java.eval.StarlarkList;
 
 /**
  * Provides shared functionality for parameterized command-line launching.
@@ -117,6 +120,9 @@ public final class CommandHelper {
   @VisibleForTesting
   public static int maxCommandLength = OS.getCurrent() == OS.WINDOWS ? 8000 : 64000;
 
+  /** {@link RunfilesSupplier}s for tools used by this rule. */
+  private final Sequence<RunfilesSupplier> toolsRunfilesSuppliers;
+
   /**
    * Use labelMap for heuristically expanding labels (does not include "outs")
    * This is similar to heuristic location expansion in LocationExpander
@@ -150,6 +156,7 @@ public final class CommandHelper {
     this.ruleContext = ruleContext;
 
     NestedSetBuilder<Artifact> resolvedToolsBuilder = NestedSetBuilder.stableOrder();
+    ImmutableList.Builder<RunfilesSupplier> toolsRunfilesBuilder = ImmutableList.builder();
     Map<Label, Collection<Artifact>> tempLabelMap = new HashMap<>();
 
     for (Map.Entry<Label, ? extends Iterable<Artifact>> entry : labelMap.entrySet()) {
@@ -176,6 +183,7 @@ public final class CommandHelper {
           // Also send the runfiles if needed.
           RunfilesSupport runfilesSupport = tool.getRunfilesSupport();
           if (runfilesSupport != null) {
+            toolsRunfilesBuilder.add(runfilesSupport);
             resolvedToolsBuilder.add(runfilesSupport.getRunfilesMiddleman());
             // It's possible that getExecutable() returns an artifact that is not in
             // getFilesToBuild(). It is not nice, but it happens
@@ -190,6 +198,7 @@ public final class CommandHelper {
     }
 
     this.resolvedTools = resolvedToolsBuilder.build();
+    this.toolsRunfilesSuppliers = StarlarkList.immutableCopyOf(toolsRunfilesBuilder.build());
     ImmutableMap.Builder<Label, ImmutableCollection<Artifact>> labelMapBuilder =
         ImmutableMap.builder();
     for (Map.Entry<Label, Collection<Artifact>> entry : tempLabelMap.entrySet()) {
@@ -200,6 +209,10 @@ public final class CommandHelper {
 
   public NestedSet<Artifact> getResolvedTools() {
     return resolvedTools;
+  }
+
+  public Sequence<RunfilesSupplier> getToolsRunfilesSuppliers() {
+    return toolsRunfilesSuppliers;
   }
 
   public ImmutableMap<Label, ImmutableCollection<Artifact>> getLabelMap() {

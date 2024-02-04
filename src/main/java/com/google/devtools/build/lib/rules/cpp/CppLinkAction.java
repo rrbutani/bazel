@@ -25,6 +25,7 @@ import com.google.devtools.build.lib.actions.Artifact;
 import com.google.devtools.build.lib.actions.Artifact.ArtifactExpander;
 import com.google.devtools.build.lib.actions.Artifact.SpecialArtifact;
 import com.google.devtools.build.lib.actions.CommandLineExpansionException;
+import com.google.devtools.build.lib.actions.EmptyRunfilesSupplier;
 import com.google.devtools.build.lib.actions.ExecException;
 import com.google.devtools.build.lib.actions.ExecutionRequirements;
 import com.google.devtools.build.lib.actions.ResourceSet;
@@ -167,6 +168,7 @@ public final class CppLinkAction extends SpawnAction {
         /* env= */ env,
         /* executionInfo= */ executionRequirements,
         /* progressMessage= */ (isLtoIndexing ? "LTO indexing %{output}" : "Linking %{output}"),
+        /* runfilesSupplier= */ EmptyRunfilesSupplier.INSTANCE,
         /* mnemonic= */ getMnemonic(mnemonic, isLtoIndexing),
         /* outputPathsMode= */ OutputPathsMode.OFF);
 

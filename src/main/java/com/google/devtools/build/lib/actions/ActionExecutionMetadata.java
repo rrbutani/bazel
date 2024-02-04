@@ -79,6 +79,11 @@ public interface ActionExecutionMetadata extends ActionAnalysisMetadata {
   String describeKey();
 
   /**
+   * Get the {@link RunfilesSupplier} providing runfiles needed by this action.
+   */
+  RunfilesSupplier getRunfilesSupplier();
+
+  /**
    * Returns true iff the {@link #getInputs} set is known to be complete.
    *
    * <p>For most actions, this always returns true. For actions which {@linkplain #discoversInputs

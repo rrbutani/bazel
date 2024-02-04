@@ -800,6 +800,11 @@ public final class ResourceManagerTest {
     }
 
     @Override
+    public RunfilesSupplier getRunfilesSupplier() {
+      throw new IllegalStateException();
+    }
+
+    @Override
     public ImmutableSet<Artifact> getOutputs() {
       throw new IllegalStateException();
     }

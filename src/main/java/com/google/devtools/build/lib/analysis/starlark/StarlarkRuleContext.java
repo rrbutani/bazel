@@ -1159,7 +1159,7 @@ public final class StarlarkRuleContext
     return Tuple.triple(
         StarlarkList.copyOf(thread.mutability(), inputs),
         StarlarkList.copyOf(thread.mutability(), argv),
-        StarlarkList.empty());
+        helper.getToolsRunfilesSuppliers());
   }
 
   @Override
@@ -1169,7 +1169,8 @@ public final class StarlarkRuleContext
         CommandHelper.builder(ruleContext)
             .addToolDependencies(Sequence.cast(tools, TransitiveInfoCollection.class, "tools"))
             .build();
-    return Tuple.pair(Depset.of(Artifact.class, helper.getResolvedTools()), StarlarkList.empty());
+    return Tuple.pair(
+        Depset.of(Artifact.class, helper.getResolvedTools()), helper.getToolsRunfilesSuppliers());
   }
 
   @Override

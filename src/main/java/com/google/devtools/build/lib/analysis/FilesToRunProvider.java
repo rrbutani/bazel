@@ -14,9 +14,12 @@
 
 package com.google.devtools.build.lib.analysis;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.devtools.build.lib.actions.Artifact;
+import com.google.devtools.build.lib.actions.EmptyRunfilesSupplier;
+import com.google.devtools.build.lib.actions.RunfilesSupplier;
 import com.google.devtools.build.lib.collect.nestedset.NestedSet;
 import com.google.devtools.build.lib.collect.nestedset.NestedSetBuilder;
 import com.google.devtools.build.lib.collect.nestedset.Order;
@@ -105,6 +108,11 @@ public class FilesToRunProvider implements TransitiveInfoProvider, FilesToRunPro
   public Artifact getRepoMappingManifest() {
     var runfilesSupport = getRunfilesSupport();
     return runfilesSupport != null ? runfilesSupport.getRepoMappingManifest() : null;
+  }
+
+  /** Returns a {@link RunfilesSupplier} encapsulating runfiles for this tool. */
+  public final RunfilesSupplier getRunfilesSupplier() {
+    return firstNonNull(getRunfilesSupport(), EmptyRunfilesSupplier.INSTANCE);
   }
 
   /** A single executable. */

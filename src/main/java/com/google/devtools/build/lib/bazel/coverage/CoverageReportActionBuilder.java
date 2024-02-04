@@ -34,8 +34,6 @@ import com.google.devtools.build.lib.actions.ArtifactOwner;
 import com.google.devtools.build.lib.actions.ArtifactPathResolver;
 import com.google.devtools.build.lib.actions.ArtifactRoot;
 import com.google.devtools.build.lib.actions.BaseSpawn;
-import com.google.devtools.build.lib.actions.CompositeRunfilesSupplier;
-import com.google.devtools.build.lib.actions.EmptyRunfilesSupplier;
 import com.google.devtools.build.lib.actions.ExecException;
 import com.google.devtools.build.lib.actions.ExecutionRequirements;
 import com.google.devtools.build.lib.actions.NotifyOnActionCacheHit;
@@ -110,7 +108,7 @@ public final class CoverageReportActionBuilder {
     private final ImmutableList<String> command;
     private final boolean remotable;
     private final String locationMessage;
-    @Nullable private final Artifact runfilesMiddleman;
+    private final RunfilesSupplier runfilesSupplier;
 
     CoverageReportAction(
         ActionOwner owner,
@@ -119,31 +117,18 @@ public final class CoverageReportActionBuilder {
         ImmutableList<String> command,
         String locationMessage,
         boolean remotable,
-        @Nullable Artifact runfilesMiddleman) {
+        RunfilesSupplier runfilesSupplier) {
       super(owner, inputs, outputs);
       this.command = command;
       this.remotable = remotable;
       this.locationMessage = locationMessage;
-      this.runfilesMiddleman = runfilesMiddleman;
+      this.runfilesSupplier = runfilesSupplier;
     }
 
     @Override
     public ActionResult execute(ActionExecutionContext actionExecutionContext)
         throws ActionExecutionException, InterruptedException {
       try {
-        RunfilesSupplier runfilesSupplier;
-        if (runfilesMiddleman != null) {
-          runfilesSupplier =
-              CompositeRunfilesSupplier.fromRunfilesTrees(
-                  ImmutableList.of(
-                      actionExecutionContext
-                          .getInputMetadataProvider()
-                          .getRunfilesMetadata(runfilesMiddleman)
-                          .getRunfilesTree()));
-        } else {
-          runfilesSupplier = EmptyRunfilesSupplier.INSTANCE;
-        }
-
         ImmutableMap<String, String> executionInfo =
             remotable ? ImmutableMap.of() : ImmutableMap.of(ExecutionRequirements.NO_REMOTE, "");
         Spawn spawn =
@@ -164,6 +149,11 @@ public final class CoverageReportActionBuilder {
       } catch (ExecException e) {
         throw ActionExecutionException.fromExecException(e, this);
       }
+    }
+
+    @Override
+    public RunfilesSupplier getRunfilesSupplier() {
+      return runfilesSupplier;
     }
 
     @Override
@@ -289,8 +279,6 @@ public final class CoverageReportActionBuilder {
                 coverageDir.getRelative("_coverage_report.dat"), root, args.artifactOwner());
     Artifact reportGeneratorExec = args.reportGenerator().getExecutable();
     RunfilesSupport runfilesSupport = args.reportGenerator().getRunfilesSupport();
-    Artifact runfilesMiddleman =
-        runfilesSupport != null ? runfilesSupport.getRunfilesMiddleman() : null;
     args = CoverageArgs.createCopyWithCoverageDirAndLcovOutput(args, coverageDir, lcovOutput);
     ImmutableList<String> actionArgs = argsFunc.apply(args);
 
@@ -299,8 +287,8 @@ public final class CoverageReportActionBuilder {
             .addAll(args.coverageArtifacts())
             .add(reportGeneratorExec)
             .add(args.lcovArtifact());
-    if (runfilesMiddleman != null) {
-      inputsBuilder.add(runfilesMiddleman);
+    if (runfilesSupport != null) {
+      inputsBuilder.add(runfilesSupport.getRunfilesMiddleman());
     }
     return new CoverageReportAction(
         ACTION_OWNER,
@@ -309,6 +297,6 @@ public final class CoverageReportActionBuilder {
         actionArgs,
         locationFunc.apply(args),
         !args.htmlReport(),
-        runfilesMiddleman);
+        args.reportGenerator().getRunfilesSupplier());
   }
 }

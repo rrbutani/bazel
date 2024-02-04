@@ -22,8 +22,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.eventbus.EventBus;
+import com.google.devtools.build.lib.actions.ActionExecutionMetadata;
 import com.google.devtools.build.lib.actions.Artifact;
-import com.google.devtools.build.lib.actions.MiddlemanAction;
+import com.google.devtools.build.lib.actions.RunfilesSupplier;
 import com.google.devtools.build.lib.actions.RunfilesSupplier.RunfilesTree;
 import com.google.devtools.build.lib.analysis.AnalysisResult;
 import com.google.devtools.build.lib.analysis.ConfiguredAspect;
@@ -146,9 +147,9 @@ public class TestActionBuilderTest extends BuildViewTestCase {
       throws Exception {
     return getTestStatusArtifacts(label).stream()
         .map(this::getGeneratingAction)
-        .map(a -> ((TestRunnerAction) a).getRunfilesMiddleman())
-        .map(this::getGeneratingAction)
-        .map(a -> ((MiddlemanAction) a).getRunfilesTree())
+        .map(ActionExecutionMetadata::getRunfilesSupplier)
+        .map(RunfilesSupplier::getRunfilesTrees)
+        .map(Iterables::getOnlyElement)
         .map(RunfilesTree::getMapping)
         .collect(toImmutableList());
   }

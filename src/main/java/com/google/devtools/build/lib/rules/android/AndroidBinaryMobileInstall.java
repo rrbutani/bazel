@@ -29,6 +29,7 @@ import com.google.devtools.build.lib.actions.ExecutionRequirements;
 import com.google.devtools.build.lib.actions.ParamFileInfo;
 import com.google.devtools.build.lib.actions.ParameterFile.ParameterFileType;
 import com.google.devtools.build.lib.actions.ResourceSetOrBuilder;
+import com.google.devtools.build.lib.actions.RunfilesSupplier;
 import com.google.devtools.build.lib.analysis.FilesToRunProvider;
 import com.google.devtools.build.lib.analysis.RuleConfiguredTargetBuilder;
 import com.google.devtools.build.lib.analysis.RuleContext;
@@ -515,6 +516,7 @@ public final class AndroidBinaryMobileInstall {
         ActionEnvironment env,
         ImmutableMap<String, String> executionInfo,
         CharSequence progressMessage,
+        RunfilesSupplier runfilesSupplier,
         String mnemonic) {
       super(
           owner,
@@ -526,6 +528,7 @@ public final class AndroidBinaryMobileInstall {
           env,
           executionInfo,
           progressMessage,
+          runfilesSupplier,
           mnemonic,
           OutputPathsMode.OFF);
     }
@@ -551,6 +554,7 @@ public final class AndroidBinaryMobileInstall {
         @Nullable BuildConfigurationValue configuration,
         ImmutableMap<String, String> executionInfo,
         CharSequence progressMessage,
+        RunfilesSupplier runfilesSupplier,
         String mnemonic) {
       return new InstallAction(
           owner,
@@ -562,6 +566,7 @@ public final class AndroidBinaryMobileInstall {
           env,
           executionInfo,
           progressMessage,
+          runfilesSupplier,
           mnemonic);
     }
   }
