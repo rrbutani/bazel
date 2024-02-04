@@ -604,6 +604,8 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
 
         // TODO(rrbutani): fix this; we shouldn't be mounting in the entire
         // execroot?
+        // TODO(rrbutani, rebase): revisit; still required, kind of out of scope
+        // for the sandbox changes we're making..
       }
     }
 
@@ -612,11 +614,11 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
         .getSourceRootBindMounts()
         .forEach(
             (withinSandbox, real) -> {
-              PathFragment sandboxTmpSourceRoot = withinSandbox.asPath().relativeTo(tmpPath);
-              result.add(BindMount.of(sandboxTmp.getRelative(sandboxTmpSourceRoot), real));
+              // PathFragment sandboxTmpSourceRoot = withinSandbox.asPath().relativeTo(tmpPath);
+              // result.add(BindMount.of(sandboxTmp.getRelative(sandboxTmpSourceRoot), real));
 
-              /*
-                // TODO(rrbutani, rebase): revisit
+              // /*
+                // TODO(rrbutani, rebase): revisited; this **is** still needed...
                 PathFragment sandboxTmpSourceRoot = withinSandbox.asPath().relativeTo(tmpPath);
                 if (!getSandboxOptions().useHermetic) {
                   result.add(BindMount.of(sandboxTmp.getRelative(sandboxTmpSourceRoot), real));
@@ -631,7 +633,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
                     real
                   ));
                 }
-               */
+              //  */
             });
 
     // bind mount in external local artifacts directly:
@@ -645,8 +647,8 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     // // and individual source roots are under /tmp, they are accessible at /tmp/bazel-*
     // result.add(BindMount.of(tmpPath, sandboxTmp));
 
-    // TODO(rrbutani, rebase): revisit; I think this is *not* needed anymore.
-    /*
+    // TODO(rrbutani, rebase): revisited; this is unfortunately still necessary!
+    // /*
     if (getSandboxOptions().useHermetic) {
       // Unfortunately we don't have a good way to deal with absolute path
       // symlinks that actions make into external directories...
@@ -662,10 +664,20 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
       // Unfortunately some actions (so far just the Turbine command's params
       // file for the libanalysis_cluster hjar in Bazel) also make symlinks into
       // the execroot by absolute path...
-      Path execrootDir = blazeDirs.getExecRootBase();
-      result.add(BindMount.of(execrootDir, execrootDir));
+/*       Path execrootDir = blazeDirs.getExecRootBase();
+      result.add(BindMount.of(execrootDir, execrootDir)); */
+      // Seems no longer required! 2024-02-01
+
+      // `java_binary`'s JavaDeployJar references files in the install base...
+      // not going to handle this for now..
+      //
+      // it's not clear to me how this gets handled under the normal hermetic
+      // sandbox/hermetic tmp configurations. is JavaDeployJar special? is it
+      // somehow not registering a dep on the install base source root?
+      //
+      // NOTE: use `--modify_execution_info=JavaDeployJar=+local` for now.
     }
-    */
+    // */
 
     // excludes:
     if (getSandboxOptions().useHermetic) {
