@@ -155,6 +155,19 @@ static int CreateTarget(const char *path, bool is_directory) {
   return 0;
 }
 
+static void CreateTmpFS(const char *dir) {
+  if (CreateTarget(dir, true) < 0) {
+    DIE("CreateTarget (for tmpfs) %s", dir);
+  }
+
+  PRINT_DEBUG("tmpfs: %s", dir);
+  if (mount("tmpfs", dir, "tmpfs",
+            MS_NOSUID | MS_NODEV | MS_NOATIME, nullptr) < 0) {
+    DIE("mount(tmpfs, %s, tmpfs, MS_NOSUID | MS_NODEV | MS_NOATIME, nullptr)",
+        dir);
+  }
+}
+
 static void SetupSelfDestruction(int *pipe_to_parent) {
   // We could also poll() on the pipe fd to find out when the parent goes away,
   // and rely on SIGCHLD interrupting that otherwise. That might require us to
@@ -601,6 +614,9 @@ static void MountDev() {
     // DIE("symlink");
     PRINT_DEBUG("failed to make symlink: /proc/self/fd -> dev/fd");
   }
+
+  // Create a tmpfs at `/dev/shm`:
+  CreateTmpFS("dev/shm"); // omitted leading `/` is intentional; see above
 }
 
 // TODO: unify with `MountFilesystems`?
@@ -608,17 +624,14 @@ static void MountDev() {
 // note: this is the version of ^ for the hermetic sandbox
 static void MountAllMounts() {
   // Note that we do not create target directories here and do not prefix the
-  // tmpfs_dirs with the sandbox base.
+  // tmpfs_dirs with the sandbox base (TODO: we should do this... otherwise
+  // `/tmp` in the sandbox is not a tmpfs but is actual storage space in the
+  // execroot!)
   //
   // for now, keeping this separate from the tree based logic for the rest of
   // the mounts (TODO)
   for (const std::string &tmpfs_dir : opt.tmpfs_dirs) {
-    PRINT_DEBUG("tmpfs: %s", tmpfs_dir.c_str());
-    if (mount("tmpfs", tmpfs_dir.c_str(), "tmpfs",
-              MS_NOSUID | MS_NODEV | MS_NOATIME, nullptr) < 0) {
-      DIE("mount(tmpfs, %s, tmpfs, MS_NOSUID | MS_NODEV | MS_NOATIME, nullptr)",
-          tmpfs_dir.c_str());
-    }
+    CreateTmpFS(tmpfs_dir.c_str());
   }
 
   // Make sure that the working directory is writable (unlike most of the rest

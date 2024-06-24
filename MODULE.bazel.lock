@@ -9295,7 +9295,7 @@
       "general": {
         "bzlTransitiveDigest": "kUzM2F0WFPhKvKMIvP+yYzmY9PWa0Wd7ipLxfj5Cax4=",
         "accumulatedFileDigests": {
-          "@@rules_rust~0.38.0~cargo_bazel_bootstrap~cargo_bazel_bootstrap//:cargo-bazel": "975e3a37e3c329f4cce5c1df57bf73c39e386bee46b945250e41a8aa2520ae59",
+          "@@rules_rust~0.38.0~cargo_bazel_bootstrap~cargo_bazel_bootstrap//:cargo-bazel": "ae6d2cc6eb87848569b52ed16ff6753fd37ce8d2de0c41a2e68bebf90cc91fe6",
           "@@rules_rust~0.38.0~rust~rust_host_tools//:bin/cargo": "b30a9fc475de8b03077f5947e0a20ea59af47733724af215cabd0a72e3722446",
           "@@//:Cargo.lock": "1c7cf8219b439232aca950b9554377b0e905ec1f6e2ad2f2aa2e00a511632137",
           "@@rules_rust~0.38.0~rust~rust_host_tools//:bin/rustc": "7cd1c64771117a00efd8eb5113e2aed512545441c23436f6923e5deb8c97016c",
