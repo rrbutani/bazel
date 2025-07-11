@@ -442,7 +442,11 @@ static void MountProc() {
 
   // Mount a new proc on top of the old one, because the old one still refers to
   // our parent PID namespace.
-  if (mount("/proc", proc_dest.c_str(), "proc", MS_NODEV | MS_NOEXEC | MS_NOSUID,
+  //
+  // NOTE: mounting `/proc` (source) fails under some chroot environments (i.e.
+  // when running `linux-sandbox` under another chroot, like `singularity`) if
+  // `MS_REC` + `MS_BIND` aren't set; see: https://stackoverflow.com/a/23435317
+  if (mount("/proc", proc_dest.c_str(), "proc", MS_REC | MS_BIND | MS_NODEV | MS_NOEXEC | MS_NOSUID,
             nullptr) < 0) {
     DIE("mount");
   }
