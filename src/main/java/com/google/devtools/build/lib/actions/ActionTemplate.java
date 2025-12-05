@@ -18,6 +18,7 @@ import static com.google.common.collect.ImmutableListMultimap.toImmutableListMul
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
+import com.google.devtools.build.lib.actions.ArtifactPathResolver;
 import com.google.devtools.build.lib.actions.Artifact.SpecialArtifact;
 import com.google.devtools.build.lib.actions.Artifact.TreeFileArtifact;
 import com.google.devtools.build.lib.analysis.platform.PlatformInfo;
@@ -74,12 +75,15 @@ public interface ActionTemplate<T extends Action> extends ActionAnalysisMetadata
    * @param artifactOwner the {@link ArtifactOwner} of the generated output {@link
    *     TreeFileArtifact}s
    * @param eventHandler the {@link EventHandler} to report events to.
+   * @param pathResolver an {@link ArtifactPathResolver} that can be used to read the contents
+   *     of files within {@param inputTreeFileArtifacts}.
    * @return a list of expanded {@link Action}s to execute
    */
   ImmutableList<T> generateActionsForInputArtifacts(
       ImmutableList<TreeFileArtifact> inputTreeFileArtifacts,
       ActionLookupKey artifactOwner,
-      EventHandler eventHandler)
+      EventHandler eventHandler,
+      ArtifactPathResolver pathResolver)
       throws ActionConflictException, ActionExecutionException, InterruptedException;
 
   /** Returns the input TreeArtifacts. */

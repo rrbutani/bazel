@@ -30,6 +30,7 @@ import com.google.devtools.build.lib.actions.ActionTemplate;
 import com.google.devtools.build.lib.actions.Artifact;
 import com.google.devtools.build.lib.actions.Artifact.SpecialArtifact;
 import com.google.devtools.build.lib.actions.Artifact.TreeFileArtifact;
+import com.google.devtools.build.lib.actions.ArtifactPathResolver;
 import com.google.devtools.build.lib.actions.CommandLineExpansionException;
 import com.google.devtools.build.lib.actions.InputMetadataProvider;
 import com.google.devtools.build.lib.collect.nestedset.NestedSet;
@@ -180,7 +181,8 @@ public final class LtoBackendActionTemplate extends ActionKeyComputer
   public ImmutableList<LtoBackendAction> generateActionsForInputArtifacts(
       ImmutableList<TreeFileArtifact> inputTreeFileArtifacts,
       ActionLookupKey artifactOwner,
-      EventHandler eventHandler)
+      EventHandler eventHandler,
+      ArtifactPathResolver pathResolver)
       throws ActionExecutionException {
     if (indexAndImportsTreeArtifact != null) {
       return generateActionsForLtoArtifacts(inputTreeFileArtifacts, artifactOwner);

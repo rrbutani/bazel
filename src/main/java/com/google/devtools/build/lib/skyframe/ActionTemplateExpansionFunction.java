@@ -23,6 +23,7 @@ import com.google.devtools.build.lib.actions.ActionAnalysisMetadata;
 import com.google.devtools.build.lib.actions.ActionConflictException;
 import com.google.devtools.build.lib.actions.ActionExecutionException;
 import com.google.devtools.build.lib.actions.ActionGraph;
+import com.google.devtools.build.lib.actions.ActionInputMap;
 import com.google.devtools.build.lib.actions.ActionKeyContext;
 import com.google.devtools.build.lib.actions.ActionLookupValue;
 import com.google.devtools.build.lib.actions.ActionTemplate;
@@ -31,12 +32,19 @@ import com.google.devtools.build.lib.actions.AlreadyReportedActionExecutionExcep
 import com.google.devtools.build.lib.actions.Artifact;
 import com.google.devtools.build.lib.actions.Artifact.SpecialArtifact;
 import com.google.devtools.build.lib.actions.Artifact.TreeFileArtifact;
+import com.google.devtools.build.lib.actions.ArtifactPathResolver;
+import com.google.devtools.build.lib.analysis.BlazeDirectories;
 import com.google.devtools.build.lib.bugreport.BugReport;
 import com.google.devtools.build.lib.collect.nestedset.ArtifactNestedSetKey;
 import com.google.devtools.build.lib.collect.nestedset.NestedSet;
 import com.google.devtools.build.lib.events.Event;
 import com.google.devtools.build.lib.events.EventHandler;
+import com.google.devtools.build.lib.skyframe.ActionInputMapHelper;
+import com.google.devtools.build.lib.skyframe.ActionInputMetadataProvider;
 import com.google.devtools.build.lib.skyframe.ActionTemplateExpansionValue.ActionTemplateExpansionKey;
+import com.google.devtools.build.lib.skyframe.SkyframeActionExecutor;
+import com.google.devtools.build.lib.skyframe.MetadataConsumerForMetrics;
+import com.google.devtools.build.lib.vfs.FileSystem;
 import com.google.devtools.build.skyframe.SkyFunction;
 import com.google.devtools.build.skyframe.SkyFunctionException;
 import com.google.devtools.build.skyframe.SkyKey;
@@ -57,10 +65,14 @@ import javax.annotation.Nullable;
  */
 public class ActionTemplateExpansionFunction implements SkyFunction {
   private final ActionKeyContext actionKeyContext;
+  private final SkyframeActionExecutor skyframeActionExecutor;
+  private final BlazeDirectories directories;
 
   @VisibleForTesting
-  ActionTemplateExpansionFunction(ActionKeyContext actionKeyContext) {
+  ActionTemplateExpansionFunction(ActionKeyContext actionKeyContext, SkyframeActionExecutor skyframeActionExecutor, BlazeDirectories directories) {
     this.actionKeyContext = actionKeyContext;
+    this.skyframeActionExecutor = skyframeActionExecutor;
+    this.directories = directories;
   }
 
   @Nullable
@@ -94,25 +106,59 @@ public class ActionTemplateExpansionFunction implements SkyFunction {
 
     SkyframeLookupResult result = env.getValuesAndExceptions(inputKeys.build());
 
-    // Input TreeArtifact is not ready yet.
+    // One or more `TreeArtifact`s are not ready yet.
     if (env.valuesMissing()) {
       return null;
     }
     ImmutableList<ActionAnalysisMetadata> actions;
+    ActionInputMap actionInputMap = new ActionInputMap(actionTemplate.getInputTreeArtifacts().size());
+
     try {
       ImmutableList.Builder<TreeFileArtifact> inputTreeFileArtifacts = ImmutableList.builder();
       for (SpecialArtifact inputTreeArtifact : actionTemplate.getInputTreeArtifacts()) {
-        TreeArtifactValue treeArtifactValue =
-            (TreeArtifactValue)
-                result.getOrThrow(inputTreeArtifact, ActionExecutionException.class);
-        inputTreeFileArtifacts.addAll(treeArtifactValue.getChildren());
+        SkyValue skyValue = result.getOrThrow(inputTreeArtifact, ActionExecutionException.class);
+        TreeArtifactValue treeArtifactValue = (TreeArtifactValue) skyValue;
+        inputTreeFileArtifacts.addAll(treeArtifactValue.getChildren()); // would be nice to not have to do this eagerly?
+
+        // only including the TreeArtifact inputs; these are the only inputs
+        // that are eligible to be read in `generateAndValidateActionsFromTemplate`...
+        ActionInputMapHelper.addToMap(
+          actionInputMap, inputTreeArtifact, skyValue, MetadataConsumerForMetrics.NO_OP
+        );
       }
+
+      // Assemble path resolver for the input tree artifacts:
+      //   - see: https://github.com/bazelbuild/bazel/blob/647bd6b177652f3ff89ee253f436bdcd9d20f71a/src/main/java/com/google/devtools/build/lib/skyframe/ActionExecutionFunction.java#L943-L1063
+      //   - see: https://github.com/bazelbuild/bazel/blob/647bd6b177652f3ff89ee253f436bdcd9d20f71a/src/main/java/com/google/devtools/build/lib/skyframe/ActionExecutionFunction.java#L306-L336
+      //   - see: https://github.com/bazelbuild/bazel/blob/647bd6b177652f3ff89ee253f436bdcd9d20f71a/src/main/java/com/google/devtools/build/lib/skyframe/ActionExecutionFunction.java#L690-L692
+      FileSystem actionFileSystem = null;
+      ArtifactPathResolver pathResolver;
+      {
+        if (this.skyframeActionExecutor.actionFileSystemType().isEnabled()) {
+          actionFileSystem = this.skyframeActionExecutor.createActionFileSystem(
+            this.directories.getRelativeOutputPath(),
+            new ActionInputMetadataProvider(actionInputMap),
+            /* outputArtifacts */ null
+          );
+        }
+
+        pathResolver = ArtifactPathResolver.createPathResolver(
+          actionFileSystem, this.skyframeActionExecutor.getExecRoot()
+        );
+
+        // TODO: action unwinding? need to check `actionFileSystem`'s
+        // `missingInputs` on execption?
+
+        // TODO: should we be asking SkyFrame for each tree artifact file?
+        // (should be implied, no?)
+      }
+
       // Expand the action template using the list of expanded input TreeFileArtifacts.
       // TODO(rduan): Add a check to verify the inputs of expanded actions are subsets of inputs
       // of the ActionTemplate.
       actions =
           generateAndValidateActionsFromTemplate(
-              actionTemplate, inputTreeFileArtifacts.build(), key, env.getListener());
+              actionTemplate, inputTreeFileArtifacts.build(), key, env.getListener(), pathResolver);
     } catch (ActionExecutionException e) {
       env.getListener()
           .handle(
@@ -159,7 +205,8 @@ public class ActionTemplateExpansionFunction implements SkyFunction {
       ActionTemplate<?> actionTemplate,
       ImmutableList<TreeFileArtifact> inputTreeFileArtifacts,
       ActionTemplateExpansionKey key,
-      EventHandler eventHandler)
+      EventHandler eventHandler,
+      ArtifactPathResolver pathResolver)
       throws ActionConflictException, ActionExecutionException, InterruptedException {
     Collection<Artifact> outputs = actionTemplate.getOutputs();
     for (Artifact output : outputs) {
@@ -170,7 +217,7 @@ public class ActionTemplateExpansionFunction implements SkyFunction {
           output);
     }
     ImmutableList<? extends Action> actions =
-        actionTemplate.generateActionsForInputArtifacts(inputTreeFileArtifacts, key, eventHandler);
+        actionTemplate.generateActionsForInputArtifacts(inputTreeFileArtifacts, key, eventHandler, pathResolver);
     for (Action action : actions) {
       for (Artifact output : action.getOutputs()) {
         Preconditions.checkState(
@@ -257,3 +304,49 @@ public class ActionTemplateExpansionFunction implements SkyFunction {
     }
   }
 }
+
+// alternatively: get `StarlarkMapActionTemplate` to use `discoverInputs`?
+//   - i.e. model as an `ActionExecutionFunction` (SkyFunction) instead of an
+//     `ActionTemplateExpansionFunction` (SkyFunction)...
+//   - otoh `discoverInputs` is way more general an interface... we don't need
+//     the ability to list arbitrary artifacts as inputs (or really, even list
+//     any additional artifacts; just to read the contents of artifacts in
+//     TreeArtifacts that the `ActionTemplate` machinery has already listed as
+//     inputs)
+
+/*
+
+
+how are inputs read in `discoverInputs`?
+  - `SkyframeExecutor` ctor sets up `skyframeActionExecutor`
+    + https://github.com/bazelbuild/bazel/blob/1af38400f71225e37a79d7edc42bfa2d76c926ca/src/main/java/com/google/devtools/build/lib/skyframe/SkyframeExecutor.java#L724-L733
+    +
+  - `SkyframeExecutor.skyFunctions` registers `ACTION_EXECUTION` SkyFunction
+    + https://github.com/bazelbuild/bazel/blob/1af38400f71225e37a79d7edc42bfa2d76c926ca/src/main/java/com/google/devtools/build/lib/skyframe/SkyframeExecutor.java#L930
+    + in `newActionExecutionFunction`: https://github.com/bazelbuild/bazel/blob/1af38400f71225e37a79d7edc42bfa2d76c926ca/src/main/java/com/google/devtools/build/lib/skyframe/SkyframeExecutor.java#L983-L993
+      * `skyframeActionExecutor` = `skyframeActionExecutor`
+  - `SkyframeExecutor.buildArtifacts` -> `prepareSkyframeActionExecutorForExecution`
+    + https://github.com/bazelbuild/bazel/blob/1af38400f71225e37a79d7edc42bfa2d76c926ca/src/main/java/com/google/devtools/build/lib/skyframe/SkyframeExecutor.java#L1916-L1917
+    +
+  - ActionExecutionFunction.compute (SkyFunction) ->
+    + ActionExecutionFunction.computeInternal ->
+      * `state.actionFilesystem` set to `skyframeActionExecutor.createActionFileSystem(...)` -> `outputService.createActionFileSystem(...)`
+        - https://github.com/bazelbuild/bazel/blob/647bd6b177652f3ff89ee253f436bdcd9d20f71a/src/main/java/com/google/devtools/build/lib/skyframe/ActionExecutionFunction.java#L331-L337
+        - see: https://github.com/bazelbuild/bazel/blob/427040e8d5f8bab67e590494a440fdc97b7fe46b/src/main/java/com/google/devtools/build/lib/skyframe/SkyframeActionExecutor.java#L457-L464
+    + ActionExecutionFunction.checkCacheAndExecuteIfNeeded ->
+    + skyframeActionExecutor.discoverInputs
+      * https://github.com/bazelbuild/bazel/blob/647bd6b177652f3ff89ee253f436bdcd9d20f71a/src/main/java/com/google/devtools/build/lib/skyframe/ActionExecutionFunction.java#L740
+        - discoverInputs driver: https://github.com/bazelbuild/bazel/blob/427040e8d5f8bab67e590494a440fdc97b7fe46b/src/main/java/com/google/devtools/build/lib/skyframe/SkyframeActionExecutor.java#L913
+          + takes `FileSystem` arg `state.actionFileSystem` (from `InputDiscoveryState`)
+      ....
+  - `Action.discoverInputs`; i.e. for `LtoBackendAction`
+    + https://github.com/bazelbuild/bazel/blob/cebdb9130a237e1909312279706acbf218f198ac/src/main/java/com/google/devtools/build/lib/rules/cpp/LtoBackendAction.java#L214-L215
+    + makes `ActionExecutionContext` out of... a bunch of state including `actionFileSystem`
+  - `ActionExecutionContext.getInputPath`
+    + https://github.com/bazelbuild/bazel/blob/b0b5497749eb1550c96d92c52f477689e07dca6f/src/main/java/com/google/devtools/build/lib/actions/ActionExecutionContext.java#L401-L403
+  - `ArtifactPathResolver.toPath`; in this case `ArtifactPathResolver` is:
+    + `ArtifactPathResolver.createPathResolver`: https://github.com/bazelbuild/bazel/blob/b0b5497749eb1550c96d92c52f477689e07dca6f/src/main/java/com/google/devtools/build/lib/actions/ActionExecutionContext.java#L273-L275
+      * i.e. `TransformResolver`: https://github.com/bazelbuild/bazel/blob/3beaaaf23e4f6e9071ef7eabced7d64513573e80/src/main/java/com/google/devtools/build/lib/actions/ArtifactPathResolver.java#L49-L61
+
+
+*/

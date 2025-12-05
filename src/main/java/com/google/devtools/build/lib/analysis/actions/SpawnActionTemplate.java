@@ -29,6 +29,7 @@ import com.google.devtools.build.lib.actions.ActionTemplate;
 import com.google.devtools.build.lib.actions.Artifact;
 import com.google.devtools.build.lib.actions.Artifact.SpecialArtifact;
 import com.google.devtools.build.lib.actions.Artifact.TreeFileArtifact;
+import com.google.devtools.build.lib.actions.ArtifactPathResolver;
 import com.google.devtools.build.lib.actions.CommandLine;
 import com.google.devtools.build.lib.actions.CommandLineExpansionException;
 import com.google.devtools.build.lib.actions.CommandLineLimits;
@@ -111,7 +112,8 @@ public final class SpawnActionTemplate extends ActionKeyComputer
   public ImmutableList<SpawnAction> generateActionsForInputArtifacts(
       ImmutableList<TreeFileArtifact> inputTreeFileArtifacts,
       ActionLookupKey artifactOwner,
-      EventHandler eventHandler) {
+      EventHandler eventHandler,
+      ArtifactPathResolver pathResolver) {
     ImmutableList.Builder<SpawnAction> expandedActions =
         ImmutableList.builderWithExpectedSize(inputTreeFileArtifacts.size());
     for (TreeFileArtifact inputTreeFileArtifact : inputTreeFileArtifacts) {
