@@ -16,12 +16,15 @@ package com.google.devtools.build.lib.analysis.actions;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import java.io.IOException;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.devtools.build.lib.actions.AbstractAction;
+import com.google.devtools.build.docgen.annot.DocCategory;
 import com.google.devtools.build.lib.actions.ActionConflictException;
 import com.google.devtools.build.lib.actions.ActionEnvironment;
 import com.google.devtools.build.lib.actions.ActionExecutionContext;
@@ -42,6 +45,7 @@ import com.google.devtools.build.lib.analysis.config.CoreOptions.OutputPathsMode
 import com.google.devtools.build.lib.analysis.starlark.StarlarkTemplateContext;
 import com.google.devtools.build.lib.cmdline.BazelModuleContext;
 import com.google.devtools.build.lib.cmdline.RepositoryMapping;
+import com.google.devtools.build.lib.cmdline.Label;
 import com.google.devtools.build.lib.collect.nestedset.Depset;
 import com.google.devtools.build.lib.collect.nestedset.NestedSet;
 import com.google.devtools.build.lib.collect.nestedset.NestedSetBuilder;
@@ -49,13 +53,17 @@ import com.google.devtools.build.lib.collect.nestedset.Order;
 import com.google.devtools.build.lib.events.Event;
 import com.google.devtools.build.lib.events.EventHandler;
 import com.google.devtools.build.lib.server.FailureDetails;
-import com.google.devtools.build.lib.starlarkbuildapi.ExpandedDirectoryApi;
 import com.google.devtools.build.lib.starlarkbuildapi.FileApi;
+import com.google.devtools.build.lib.starlarkbuildapi.FileRootApi;
 import com.google.devtools.build.lib.supplier.InterruptibleSupplier;
 import com.google.devtools.build.lib.util.DetailedExitCode;
 import com.google.devtools.build.lib.util.Fingerprint;
+import com.google.devtools.build.lib.vfs.FileSystemUtils;
+import java.nio.charset.Charset;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
+import net.starlark.java.annot.StarlarkBuiltin;
+import net.starlark.java.annot.StarlarkMethod;
 import net.starlark.java.eval.Dict;
 import net.starlark.java.eval.EvalException;
 import net.starlark.java.eval.Mutability;
@@ -66,6 +74,7 @@ import net.starlark.java.eval.StarlarkFunction;
 import net.starlark.java.eval.StarlarkInt;
 import net.starlark.java.eval.StarlarkList;
 import net.starlark.java.eval.StarlarkSemantics;
+import net.starlark.java.eval.StarlarkValue;
 import net.starlark.java.eval.StarlarkThread;
 import net.starlark.java.eval.SymbolGenerator;
 
@@ -229,7 +238,10 @@ public final class StarlarkMapActionTemplate extends ActionKeyComputer
     for (Entry<String, SpecialArtifact> entry : inputDirectories.entrySet()) {
       SpecialArtifact inputDirectory = entry.getValue();
       ImmutableList<TreeFileArtifact> children = inputTreeArtifactsToChildren.get(inputDirectory);
-      expandedDirectories.put(entry.getKey(), new ExpandedDirectory(inputDirectory, children));
+      expandedDirectories.put(
+        entry.getKey(),
+        new ExpandedDirectory(inputDirectory, children, pathResolver)
+      );
     }
 
     try (Mutability mu = Mutability.create("action template")) {
@@ -443,6 +455,94 @@ public final class StarlarkMapActionTemplate extends ActionKeyComputer
     return String.format("Expanding %s into actions.", getInputTreeArtifacts());
   }
 
+  /** Represents a directory that has been expanded at execution time. */
+  @StarlarkBuiltin(
+      name = "ReadableTreeFileArtifact",
+      category = DocCategory.BUILTIN,
+      doc =
+          "Represents a file within a tree artifact whose contents can be "
+            + "read in Starlark (within a `map_directory` implementation "
+            + "function).")
+  private static class ReadableTreeFileArtifact implements FileApi {
+    TreeFileArtifact inner;
+    ArtifactPathResolver pathResolver;
+
+    ReadableTreeFileArtifact(TreeFileArtifact inner, ArtifactPathResolver pathResolver) {
+      this.inner = inner;
+      this.pathResolver = pathResolver;
+    }
+
+    @StarlarkMethod(
+        name = "read",
+        doc = "Get the contents of the file.")
+    public String read() throws EvalException {
+      try {
+        var path = this.pathResolver.toPath(this.inner);
+        return FileSystemUtils.readContent(path, UTF_8);
+      } catch (IOException e) {
+        throw new EvalException("failed to read " + this.inner.toDetailString(), e);
+      }
+    }
+
+    // TODO: can we do this without all this boiler-plate? extend
+    // `TreeFileArtifact` directly, maybe?
+    /* File API: */
+    public String getDirnameForStarlark(StarlarkSemantics semantics) {
+      return this.inner.getDirnameForStarlark(semantics);
+    }
+    public String getFilename() {
+      return this.inner.getFilename();
+    }
+    public String getExtension() {
+      return this.inner.getExtension();
+    }
+    @Nullable
+    public Label getOwnerLabel() {
+      return this.inner.getOwnerLabel();
+    }
+    public FileRootApi getRootForStarlark(StarlarkSemantics semantics) {
+      return this.inner.getRootForStarlark(semantics);
+    }
+    public boolean isSourceArtifact() {
+      return this.inner.isSourceArtifact();
+    }
+    public boolean isDirectory() {
+      return this.inner.isDirectory();
+    }
+    public boolean isSymlink() {
+      return this.inner.isSymlink();
+    }
+    public String getRunfilesPathString() {
+      return this.inner.getRunfilesPathString();
+    }
+    public String getExecPathStringForStarlark(StarlarkSemantics semantics) {
+      return this.inner.getExecPathStringForStarlark(semantics);
+    }
+    public String getTreeRelativePathString() throws EvalException {
+      return this.inner.getTreeRelativePathString();
+    }
+  }
+
+  @StarlarkBuiltin(
+      name = "ExpandedDirectory",
+      category = DocCategory.BUILTIN,
+      doc =
+          "Represents an expanded directory that makes the files within the it directly accessible.")
+  public interface ExpandedDirectoryApi extends StarlarkValue {
+
+    @StarlarkMethod(
+        name = "directory",
+        structField = true,
+        doc = "The input directory that was expanded.")
+    FileApi getDirectory();
+
+    @StarlarkMethod(
+        name = "children",
+        structField = true,
+        doc = "Contains the files within the directory.")
+    StarlarkList<ReadableTreeFileArtifact> children();
+  }
+
   /**
    * Represents a directory that has been expanded at execution time.
    *
@@ -455,16 +555,23 @@ public final class StarlarkMapActionTemplate extends ActionKeyComputer
   public static class ExpandedDirectory implements ExpandedDirectoryApi {
 
     private final SpecialArtifact directory;
-    private final StarlarkList<FileApi> children;
+    private final StarlarkList<ReadableTreeFileArtifact> children;
 
-    public ExpandedDirectory(SpecialArtifact directory, ImmutableList<TreeFileArtifact> children) {
+    public ExpandedDirectory(
+      SpecialArtifact directory,
+      ImmutableList<TreeFileArtifact> children,
+      ArtifactPathResolver pathResolver
+    ) {
       checkArgument(directory.isTreeArtifact());
+      var readableChildren = children.stream()
+        .map(t -> new ReadableTreeFileArtifact(t, pathResolver))
+        .collect(ImmutableList.toImmutableList());
       this.directory = directory;
-      this.children = StarlarkList.immutableCopyOf(children);
+      this.children = StarlarkList.immutableCopyOf(readableChildren);
     }
 
     @Override
-    public StarlarkList<FileApi> children() {
+    public StarlarkList<ReadableTreeFileArtifact> children() {
       return children;
     }
 

@@ -370,7 +370,8 @@ public class RemoteActionFileSystem extends FileSystem implements PathCanonicali
     return deleted;
   }
 
-  @Override
+  @Override // TODO: some use cases actually don't need the file to be on the local FS? i.e. dotd file parsing, unused inputs list, `ExpandedDirectory.children[*].read`...
+            // would be nice to stream in these cases? idk
   public InputStream getInputStream(PathFragment path) throws IOException {
     try {
       downloadIfRemote(path);
