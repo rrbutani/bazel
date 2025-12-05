@@ -105,7 +105,7 @@ final class LinuxSandboxedSpawnRunner extends AbstractSandboxSpawnRunner {
     ImmutableList<String> linuxSandboxArgv =
         LinuxSandboxCommandLineBuilder.commandLineBuilder(linuxSandbox)
             .setTimeout(options.getLocalSigkillGraceSeconds())
-            .buildForCommand(ImmutableList.of("/bin/true"));
+            .buildForCommand(ImmutableList.of("/usr/bin/env"));
     ImmutableMap<String, String> env = ImmutableMap.of();
     Path execRoot = cmdEnv.getExecRoot();
     File cwd = execRoot.getPathFile();
