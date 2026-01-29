@@ -362,7 +362,7 @@ public class StarlarkAction extends SpawnAction {
         }
         updateInputs(
             createInputs(
-                shadowedActionObj.getInputs(), inputFilesForExtraAction, allStarlarkActionInputs));
+                shadowedActionObj.getInputs(), allStarlarkActionInputs));
         return NestedSetBuilder.wrap(
             Order.STABLE_ORDER, Sets.difference(getInputs().toSet(), oldInputs.toSet()));
       }
