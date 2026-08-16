@@ -332,20 +332,36 @@ py_binary(
     srcs = ["bazel_server_native_image_configs.py"],
 )
 
-_NATIVE_IMAGE_PLATFORM_CONSTRAINTS = [
-    "@platforms//cpu:x86_64",
-    "@platforms//os:linux",
-]
+_NATIVE_IMAGE_PLATFORM_CONSTRAINTS = select({
+    "//src/conditions:darwin_arm64": [
+        "@platforms//cpu:arm64",
+        "@platforms//os:macos",
+    ],
+    "//src/conditions:linux_x86_64": [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
+_NATIVE_IMAGE_GRAALVM_FILES = select({
+    "//src/conditions:darwin_arm64": "@graalvm_oracle//:files",
+    "//conditions:default": "@graalvm_25_2_4_linux_x64//:files",
+})
+
+_NATIVE_IMAGE_TOOL = select({
+    "//src/conditions:darwin_arm64": "@graalvm_oracle//:bin/native-image",
+    "//conditions:default": "@graalvm_25_2_4_linux_x64//:bin/native-image",
+})
 
 bazel_server_native_image(
     name = "bazel-server-native-image",
     deploy_jar = "//src/main/java/com/google/devtools/build/lib/bazel:BazelServer_deploy.jar",
-    exec_compatible_with = _NATIVE_IMAGE_PLATFORM_CONSTRAINTS,
-    graalvm_files = "@graalvm_25_2_4_linux_x64//:files",
     gc = "G1",
+    graalvm_files = _NATIVE_IMAGE_GRAALVM_FILES,
     jni_configuration = "bazel_server_native_jni_config.json",
-    native_image_tool = "@graalvm_25_2_4_linux_x64//:bin/native-image",
-    parallelism = 6,
+    native_image_tool = _NATIVE_IMAGE_TOOL,
+    parallelism = 4,
     reflection_configuration = "bazel_server_native_reflect_config.json",
     tags = ["manual"],
     target_compatible_with = _NATIVE_IMAGE_PLATFORM_CONSTRAINTS,
@@ -354,14 +370,16 @@ bazel_server_native_image(
 bazel_server_native_image(
     name = "bazel-server-native-image-pgo-instrumented",
     deploy_jar = "//src/main/java/com/google/devtools/build/lib/bazel:BazelServer_deploy.jar",
-    exec_compatible_with = _NATIVE_IMAGE_PLATFORM_CONSTRAINTS,
-    graalvm_files = "@graalvm_25_2_4_linux_x64//:files",
     gc = "G1",
+    graalvm_files = _NATIVE_IMAGE_GRAALVM_FILES,
+    jdk_library_path = select({
+        "//src/conditions:darwin_arm64": "bazel-server-native-image-pgo-instrumented/libmanagement_ext.dylib",
+        "//conditions:default": "bazel-server-native-image-pgo-instrumented/libmanagement_ext.so",
+    }),
     jni_configuration = "bazel_server_native_jni_config.json",
-    jdk_library_path = "bazel-server-native-image-pgo-instrumented/libmanagement_ext.so",
-    native_image_tool = "@graalvm_25_2_4_linux_x64//:bin/native-image",
+    native_image_tool = _NATIVE_IMAGE_TOOL,
     output_path = "bazel-server-native-image-pgo-instrumented/A-server-native",
-    parallelism = 6,
+    parallelism = 4,
     pgo_instrument = True,
     reflection_configuration = "bazel_server_native_reflect_config.json",
     tags = ["manual"],
@@ -371,14 +389,16 @@ bazel_server_native_image(
 bazel_server_native_image(
     name = "bazel-server-native-image-pgo",
     deploy_jar = "//src/main/java/com/google/devtools/build/lib/bazel:BazelServer_deploy.jar",
-    exec_compatible_with = _NATIVE_IMAGE_PLATFORM_CONSTRAINTS,
-    graalvm_files = "@graalvm_25_2_4_linux_x64//:files",
     gc = "G1",
+    graalvm_files = _NATIVE_IMAGE_GRAALVM_FILES,
+    jdk_library_path = select({
+        "//src/conditions:darwin_arm64": "bazel-server-native-image-pgo/libmanagement_ext.dylib",
+        "//conditions:default": "bazel-server-native-image-pgo/libmanagement_ext.so",
+    }),
     jni_configuration = "bazel_server_native_jni_config.json",
-    jdk_library_path = "bazel-server-native-image-pgo/libmanagement_ext.so",
-    native_image_tool = "@graalvm_25_2_4_linux_x64//:bin/native-image",
+    native_image_tool = _NATIVE_IMAGE_TOOL,
     output_path = "bazel-server-native-image-pgo/A-server-native",
-    parallelism = 6,
+    parallelism = 4,
     pgo_profiles = ["bazel_server_native_pgo_profile.iprof"],
     reflection_configuration = "bazel_server_native_reflect_config.json",
     tags = ["manual"],
@@ -393,10 +413,10 @@ genrule(
     ],
     outs = ["install_base_key_native"],
     cmd = "$(location :md5) $(SRCS) > $@",
+    tags = ["manual"],
     tools = [
         ":md5",
     ],
-    tags = ["manual"],
 )
 
 genrule(
@@ -407,10 +427,10 @@ genrule(
     ],
     outs = ["install_base_key_native_pgo_instrumented"],
     cmd = "$(location :md5) $(SRCS) > $@",
+    tags = ["manual"],
     tools = [
         ":md5",
     ],
-    tags = ["manual"],
 )
 
 genrule(
@@ -421,10 +441,10 @@ genrule(
     ],
     outs = ["install_base_key_native_pgo"],
     cmd = "$(location :md5) $(SRCS) > $@",
+    tags = ["manual"],
     tools = [
         ":md5",
     ],
-    tags = ["manual"],
 )
 
 genrule(
