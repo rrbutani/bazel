@@ -81,7 +81,7 @@ if ! git -C "${WORKTREE}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   git -C "${REPO_ROOT}" worktree add --detach "${WORKTREE}" "${BENCHMARK_REF}"
 fi
 
-python3 "${RUNNER}" prepare \
+python3.13 "${RUNNER}" prepare \
   --worktree "${WORKTREE}"
 
 git -C "${REPO_ROOT}" rev-list --first-parent --max-count="${BENCHMARK_COMMIT_COUNT}" "${BENCHMARK_REF}" \
@@ -110,8 +110,8 @@ if [[ "${BUILD_BINARIES}" == "1" ]]; then
   cp bazel-bin/src/bazel_native_pgo_instrumented "${NATIVE_PGO_INSTRUMENTED_BIN}"
   chmod +x "${JVM_BIN}" "${NATIVE_BIN}" "${NATIVE_PGO_INSTRUMENTED_BIN}"
 
-  profile_path="$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "${PGO_PROFILE}")"
-  build_input_path="$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "${PGO_BUILD_INPUT}")"
+  profile_path="$(python3.13 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "${PGO_PROFILE}")"
+  build_input_path="$(python3.13 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "${PGO_BUILD_INPUT}")"
   if [[ "${profile_path}" == "${build_input_path}" ]]; then
     echo "PGO_PROFILE must be outside the source tree: ${PGO_PROFILE}" >&2
     exit 1
@@ -119,13 +119,13 @@ if [[ "${BUILD_BINARIES}" == "1" ]]; then
   mkdir -p "$(dirname "${PGO_PROFILE}")"
   rm -f "${PGO_PROFILE}"
   rm -rf "${ARTIFACTS_ROOT}/pgo_training_xms${HEAP_TAG}_last${BENCHMARK_COMMIT_COUNT}"
-  python3 "${RUNNER}" prepare \
+  python3.13 "${RUNNER}" prepare \
     --worktree "${WORKTREE}" \
     --commits "${COMMITS_FILE}" \
     --binary "${NATIVE_PGO_INSTRUMENTED_BIN}" \
     --output-base "${NATIVE_PGO_TRAINING_OB}"
   BAZEL_NATIVE_IMAGE_SERVER_ARGS="-XX:ProfilesDumpFile=${PGO_PROFILE}" \
-    python3 "${RUNNER}" run \
+    python3.13 "${RUNNER}" run \
       --label pgo-training \
       --binary "${NATIVE_PGO_INSTRUMENTED_BIN}" \
       --worktree "${WORKTREE}" \
@@ -136,11 +136,14 @@ if [[ "${BUILD_BINARIES}" == "1" ]]; then
       --disk-cache "${DISK_CACHE}" \
       --repository-cache "${REPOSITORY_CACHE}" \
       --target "${TARGET}"
+  set +x
 
   # Native Image writes the PGO profile while the instrumented process exits.
-  BAZEL_NATIVE_IMAGE_SERVER_ARGS="-XX:ProfilesDumpFile=${PGO_PROFILE}" \
+  (cd "${WORKTREE}";
+    BAZEL_NATIVE_IMAGE_SERVER_ARGS="-XX:ProfilesDumpFile=${PGO_PROFILE}" \
     "${NATIVE_PGO_INSTRUMENTED_BIN}" \
       --output_base="${NATIVE_PGO_TRAINING_OB}" shutdown
+  )
   for _ in $(seq 1 30); do
     [[ -s "${PGO_PROFILE}" ]] && break
     sleep 1
@@ -161,7 +164,9 @@ if [[ "${BUILD_BINARIES}" == "1" ]]; then
     "${build_config_args[@]}" \
     --remote_download_outputs=toplevel \
     "--disk_cache=${DISK_CACHE}" \
-    //src:bazel-bin_native_pgo
+    //src:bazel-bin_native_pgo \
+    --stamp \
+    --embed_label "${STAMP_TAG-''}"
   rm -f "${NATIVE_PGO_BIN}"
   cp bazel-bin/src/bazel_native_pgo "${NATIVE_PGO_BIN}"
   chmod +x "${NATIVE_PGO_BIN}"
@@ -179,12 +184,12 @@ done
 echo "Warming disk and repository caches over ${BENCHMARK_REF}."
 rm -rf "${WARMUP_ARTIFACTS}" "${WARMUP_OB}"
 mkdir -p "${WARMUP_ARTIFACTS}"
-python3 "${RUNNER}" prepare \
+python3.13 "${RUNNER}" prepare \
   --worktree "${WORKTREE}" \
   --commits "${COMMITS_FILE}" \
   --binary "${JVM_BIN}" \
   --output-base "${WARMUP_OB}"
-python3 "${RUNNER}" run \
+python3.13 "${RUNNER}" run \
   --label cache-warmup \
   --binary "${JVM_BIN}" \
   --startup-option="--host_jvm_args=-Xms${HEAP_SIZE}" \
@@ -197,7 +202,7 @@ python3 "${RUNNER}" run \
   --disk-cache "${DISK_CACHE}" \
   --repository-cache "${REPOSITORY_CACHE}" \
   --target "${TARGET}"
-python3 "${RUNNER}" prepare \
+python3.13 "${RUNNER}" prepare \
   --worktree "${WORKTREE}" \
   --binary "${JVM_BIN}" \
   --output-base "${WARMUP_OB}"
@@ -208,17 +213,17 @@ mkdir -p "${ARTIFACTS}"
 
 "${HYPERFINE}" --runs "${RUNS}" --warmup 0 \
   --export-json "${ARTIFACTS}/hyperfine.json" \
-  --prepare "python3 ${RUNNER} prepare --worktree ${WORKTREE} --commits ${COMMITS_FILE} --binary ${JVM_BIN} --binary ${NATIVE_BIN} --binary ${NATIVE_PGO_BIN} --output-base ${JVM_OB} --output-base ${NATIVE_OB} --output-base ${NATIVE_PGO_OB}" \
-  "python3 ${RUNNER} run --label pgo-jvm --binary ${JVM_BIN} --startup-option=--host_jvm_args=-Xms${HEAP_SIZE} --startup-option=--host_jvm_args=-Xmx${HEAP_SIZE} --worktree ${WORKTREE} --output-base ${JVM_OB} --commits ${COMMITS_FILE} --artifacts ${ARTIFACTS} --results-csv ${ARTIFACTS}/results.csv --disk-cache ${DISK_CACHE} --repository-cache ${REPOSITORY_CACHE} --target ${TARGET}" \
-  "env BAZEL_NATIVE_IMAGE_SERVER_XMX=${HEAP_SIZE} BAZEL_NATIVE_IMAGE_SERVER_ARGS=-Xms${HEAP_SIZE} python3 ${RUNNER} run --label pgo-native-nopgo --binary ${NATIVE_BIN} --worktree ${WORKTREE} --output-base ${NATIVE_OB} --commits ${COMMITS_FILE} --artifacts ${ARTIFACTS} --results-csv ${ARTIFACTS}/results.csv --disk-cache ${DISK_CACHE} --repository-cache ${REPOSITORY_CACHE} --target ${TARGET}" \
-  "env BAZEL_NATIVE_IMAGE_SERVER_XMX=${HEAP_SIZE} BAZEL_NATIVE_IMAGE_SERVER_ARGS=-Xms${HEAP_SIZE} python3 ${RUNNER} run --label pgo-native-pgo --binary ${NATIVE_PGO_BIN} --worktree ${WORKTREE} --output-base ${NATIVE_PGO_OB} --commits ${COMMITS_FILE} --artifacts ${ARTIFACTS} --results-csv ${ARTIFACTS}/results.csv --disk-cache ${DISK_CACHE} --repository-cache ${REPOSITORY_CACHE} --target ${TARGET}"
+  --prepare "python3.13 ${RUNNER} prepare --worktree ${WORKTREE} --commits ${COMMITS_FILE} --binary ${JVM_BIN} --binary ${NATIVE_BIN} --binary ${NATIVE_PGO_BIN} --output-base ${JVM_OB} --output-base ${NATIVE_OB} --output-base ${NATIVE_PGO_OB}" \
+  "python3.13 ${RUNNER} run --label pgo-jvm --binary ${JVM_BIN} --startup-option=--host_jvm_args=-Xms${HEAP_SIZE} --startup-option=--host_jvm_args=-Xmx${HEAP_SIZE} --worktree ${WORKTREE} --output-base ${JVM_OB} --commits ${COMMITS_FILE} --artifacts ${ARTIFACTS} --results-csv ${ARTIFACTS}/results.csv --disk-cache ${DISK_CACHE} --repository-cache ${REPOSITORY_CACHE} --target ${TARGET}" \
+  "env BAZEL_NATIVE_IMAGE_SERVER_XMX=${HEAP_SIZE} BAZEL_NATIVE_IMAGE_SERVER_ARGS=-Xms${HEAP_SIZE} python3.13 ${RUNNER} run --label pgo-native-nopgo --binary ${NATIVE_BIN} --worktree ${WORKTREE} --output-base ${NATIVE_OB} --commits ${COMMITS_FILE} --artifacts ${ARTIFACTS} --results-csv ${ARTIFACTS}/results.csv --disk-cache ${DISK_CACHE} --repository-cache ${REPOSITORY_CACHE} --target ${TARGET}" \
+  "env BAZEL_NATIVE_IMAGE_SERVER_XMX=${HEAP_SIZE} BAZEL_NATIVE_IMAGE_SERVER_ARGS=-Xms${HEAP_SIZE} python3.13 ${RUNNER} run --label pgo-native-pgo --binary ${NATIVE_PGO_BIN} --worktree ${WORKTREE} --output-base ${NATIVE_PGO_OB} --commits ${COMMITS_FILE} --artifacts ${ARTIFACTS} --results-csv ${ARTIFACTS}/results.csv --disk-cache ${DISK_CACHE} --repository-cache ${REPOSITORY_CACHE} --target ${TARGET}"
 
 report_profile_args=()
 if [[ -s "${PGO_PROFILE}" ]]; then
   report_profile_args+=(--pgo-profile "${PGO_PROFILE}")
 fi
 
-python3 "${RUNNER}" report \
+python3.13 "${RUNNER}" report \
   --results-csv "${ARTIFACTS}/results.csv" \
   --hyperfine-json "${ARTIFACTS}/hyperfine.json" \
   --output "${ARTIFACTS}/report.html" \
@@ -229,7 +234,7 @@ python3 "${RUNNER}" report \
 
 cp "${ARTIFACTS}/report.html" "${STABLE_REPORT}"
 
-python3 - "$ARTIFACTS/results.csv" <<'PY'
+python3.13 - "$ARTIFACTS/results.csv" <<'PY'
 import csv
 import sys
 from pathlib import Path
