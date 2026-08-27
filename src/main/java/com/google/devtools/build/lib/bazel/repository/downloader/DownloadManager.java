@@ -72,7 +72,7 @@ import javax.annotation.Nullable;
  * to disk.
  */
 public class DownloadManager implements AutoCloseable {
-  private static final int REGISTRY_MODULE_FILE_PREFETCH_THREADS = 8;
+  private static final int REGISTRY_FILE_PREFETCH_THREADS = 8;
   private static final String BZLMOD_DOWNLOAD_CONTEXT = "Bazel module fetching";
 
   private final DownloadCache downloadCache;
@@ -81,10 +81,10 @@ public class DownloadManager implements AutoCloseable {
   private final Downloader downloader;
   private final HttpDownloader bzlmodHttpDownloader;
   private final ExtendedEventHandler eventHandler;
-  @Nullable private final ListeningExecutorService registryModuleFilePrefetchExecutor;
-  private final ConcurrentHashMap<RegistryModuleFilePrefetchKey, ListenableFuture<byte[]>>
-      registryModuleFilePrefetches = new ConcurrentHashMap<>();
-  private final Set<String> registryModuleFilePrefetchesStarted = ConcurrentHashMap.newKeySet();
+  @Nullable private final ListeningExecutorService registryFilePrefetchExecutor;
+  private final ConcurrentHashMap<RegistryFilePrefetchKey, ListenableFuture<byte[]>>
+      registryFilePrefetches = new ConcurrentHashMap<>();
+  private final Set<String> registryFilePrefetchesStarted = ConcurrentHashMap.newKeySet();
   private boolean disableDownload = false;
   private int retries = 0;
   @Nullable private Credentials netrcCreds;
@@ -121,14 +121,14 @@ public class DownloadManager implements AutoCloseable {
     this.downloader = downloader;
     this.bzlmodHttpDownloader = bzlmodHttpDownloader;
     this.eventHandler = eventHandler;
-    this.registryModuleFilePrefetchExecutor =
+    this.registryFilePrefetchExecutor =
         prefetchRegistryModuleFiles
             ? MoreExecutors.listeningDecorator(
                 Executors.newFixedThreadPool(
-                    REGISTRY_MODULE_FILE_PREFETCH_THREADS,
+                    REGISTRY_FILE_PREFETCH_THREADS,
                     new ThreadFactoryBuilder()
                         .setDaemon(true)
-                        .setNameFormat("bzlmod-registry-prefetch-%d")
+                        .setNameFormat("bzlmod-registry-file-prefetch-%d")
                         .build()))
             : null;
   }
@@ -158,11 +158,11 @@ public class DownloadManager implements AutoCloseable {
     this.credentialFactory = credentialFactory;
   }
 
-  public void prefetchRegistryModuleFiles(
+  public void prefetchRegistryFiles(
       URI registryUri,
       Map<String, String> clientEnv,
       Map<String, Optional<Checksum>> knownFileHashes) {
-    if (registryModuleFilePrefetchExecutor == null) {
+    if (registryFilePrefetchExecutor == null) {
       return;
     }
     String scheme = registryUri.getScheme();
@@ -170,7 +170,7 @@ public class DownloadManager implements AutoCloseable {
       return;
     }
     String registryPrefix = stripTrailingSlash(registryUri.toString()) + "/";
-    if (!registryModuleFilePrefetchesStarted.add(registryPrefix)) {
+    if (!registryFilePrefetchesStarted.add(registryPrefix)) {
       return;
     }
     for (Entry<String, Optional<Checksum>> entry : knownFileHashes.entrySet()) {
@@ -178,22 +178,22 @@ public class DownloadManager implements AutoCloseable {
         continue;
       }
       String url = entry.getKey();
-      if (!isChecksummedRegistryModuleFileUrl(url, registryPrefix)) {
+      if (!isChecksummedRegistryFileUrl(url, registryPrefix)) {
         continue;
       }
-      scheduleRegistryModuleFilePrefetch(URI.create(url), clientEnv, entry.getValue().get());
+      scheduleRegistryFilePrefetch(URI.create(url), clientEnv, entry.getValue().get());
     }
   }
 
   @Override
   public void close() {
-    if (registryModuleFilePrefetchExecutor == null) {
+    if (registryFilePrefetchExecutor == null) {
       return;
     }
-    for (ListenableFuture<byte[]> future : registryModuleFilePrefetches.values()) {
+    for (ListenableFuture<byte[]> future : registryFilePrefetches.values()) {
       future.cancel(true);
     }
-    registryModuleFilePrefetchExecutor.shutdownNow();
+    registryFilePrefetchExecutor.shutdownNow();
   }
 
   public Future<Path> startDownload(
@@ -485,10 +485,10 @@ public class DownloadManager implements AutoCloseable {
    * @throws IOException if download was attempted and ended up failing
    * @throws InterruptedException if this thread is being cast into oblivion
    */
-  public byte[] downloadAndReadRegistryModuleFile(
+  public byte[] downloadAndReadRegistryFile(
       URI originalUrl, Map<String, String> clientEnv, Optional<Checksum> checksum)
       throws IOException, InterruptedException {
-    if (registryModuleFilePrefetchExecutor == null || checksum.isEmpty()) {
+    if (registryFilePrefetchExecutor == null || checksum.isEmpty()) {
       return downloadAndReadOneUrlForBzlmod(originalUrl, clientEnv, checksum);
     }
     if (Thread.interrupted()) {
@@ -499,10 +499,9 @@ public class DownloadManager implements AutoCloseable {
     if (cacheHit.isPresent()) {
       return cacheHit.get();
     }
-    RegistryModuleFilePrefetchKey prefetchKey =
-        RegistryModuleFilePrefetchKey.create(originalUrl, checksum);
+    RegistryFilePrefetchKey prefetchKey = RegistryFilePrefetchKey.create(originalUrl, checksum);
     if (prefetchKey != null) {
-      ListenableFuture<byte[]> future = registryModuleFilePrefetches.get(prefetchKey);
+      ListenableFuture<byte[]> future = registryFilePrefetches.get(prefetchKey);
       if (future != null) {
         long waitStartTime = Profiler.instance().nanoTimeMaybe();
         try {
@@ -511,18 +510,18 @@ public class DownloadManager implements AutoCloseable {
               .logSimpleTask(
                   waitStartTime,
                   ProfilerTask.BZLMOD,
-                  "wait for prefetched registry module file: " + originalUrl);
+                  "wait for prefetched registry file: " + originalUrl);
           return content;
         } catch (CancellationException e) {
-          registryModuleFilePrefetches.remove(prefetchKey, future);
+          registryFilePrefetches.remove(prefetchKey, future);
           throw new InterruptedException();
         } catch (ExecutionException e) {
           Profiler.instance()
               .logSimpleTask(
                   waitStartTime,
                   ProfilerTask.BZLMOD,
-                  "wait for prefetched registry module file: " + originalUrl);
-          registryModuleFilePrefetches.remove(prefetchKey, future);
+                  "wait for prefetched registry file: " + originalUrl);
+          registryFilePrefetches.remove(prefetchKey, future);
           Throwable cause = e.getCause();
           Throwables.throwIfInstanceOf(cause, InterruptedException.class);
           if (cause instanceof InterruptedIOException interrupted) {
@@ -633,26 +632,23 @@ public class DownloadManager implements AutoCloseable {
     return Optional.empty();
   }
 
-  private void scheduleRegistryModuleFilePrefetch(
+  private void scheduleRegistryFilePrefetch(
       URI url, Map<String, String> clientEnv, Checksum checksum) {
-    RegistryModuleFilePrefetchKey key =
-        RegistryModuleFilePrefetchKey.create(url, Optional.of(checksum));
-    if (key == null || registryModuleFilePrefetchExecutor == null) {
+    RegistryFilePrefetchKey key = RegistryFilePrefetchKey.create(url, Optional.of(checksum));
+    if (key == null || registryFilePrefetchExecutor == null) {
       return;
     }
-    registryModuleFilePrefetches.computeIfAbsent(
+    registryFilePrefetches.computeIfAbsent(
         key,
         unused -> {
           long startTime = Profiler.instance().nanoTimeMaybe();
           try {
             ListenableFuture<byte[]> future =
-                registryModuleFilePrefetchExecutor.submit(
+                registryFilePrefetchExecutor.submit(
                     () -> {
                       try (SilentCloseable c =
                           Profiler.instance()
-                              .profile(
-                                  ProfilerTask.BZLMOD,
-                                  () -> "prefetch registry module file: " + url)) {
+                              .profile(ProfilerTask.BZLMOD, () -> "prefetch registry file: " + url)) {
                         return downloadAndReadOneUrlForBzlmodDirect(
                             url,
                             clientEnv,
@@ -662,7 +658,7 @@ public class DownloadManager implements AutoCloseable {
                     });
             Profiler.instance()
                 .logSimpleTask(
-                    startTime, ProfilerTask.BZLMOD, "schedule registry module prefetch: " + url);
+                    startTime, ProfilerTask.BZLMOD, "schedule registry file prefetch: " + url);
             return future;
           } catch (RejectedExecutionException e) {
             return null;
@@ -753,20 +749,25 @@ public class DownloadManager implements AutoCloseable {
     return content;
   }
 
-  private static boolean isChecksummedRegistryModuleFileUrl(String url, String registryPrefix) {
-    return url.startsWith(registryPrefix)
-        && url.endsWith("/MODULE.bazel")
-        && (url.startsWith("http://") || url.startsWith("https://"));
+  private static boolean isChecksummedRegistryFileUrl(String url, String registryPrefix) {
+    if (!url.startsWith(registryPrefix)
+        || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+      return false;
+    }
+    return url.equals(registryPrefix + "bazel_registry.json")
+        || url.endsWith("/MODULE.bazel")
+        || url.endsWith("/source.json")
+        || url.endsWith("/metadata.json");
   }
 
   private static String stripTrailingSlash(String value) {
     return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
   }
 
-  private record RegistryModuleFilePrefetchKey(URI url, Checksum checksum) {
+  private record RegistryFilePrefetchKey(URI url, Checksum checksum) {
     @Nullable
-    static RegistryModuleFilePrefetchKey create(URI url, Optional<Checksum> checksum) {
-      return checksum.map(value -> new RegistryModuleFilePrefetchKey(url, value)).orElse(null);
+    static RegistryFilePrefetchKey create(URI url, Optional<Checksum> checksum) {
+      return checksum.map(value -> new RegistryFilePrefetchKey(url, value)).orElse(null);
     }
   }
 
