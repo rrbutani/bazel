@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.13
 """Runs incremental Bazel analysis benchmarks for JVM and native Bazel binaries."""
 
 from __future__ import annotations
