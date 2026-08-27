@@ -73,4 +73,23 @@ public class DelegatingDownloader implements Downloader {
         type,
         context);
   }
+
+  @Override
+  public byte[] downloadAndRead(
+      List<URI> urls,
+      Map<String, List<String>> headers,
+      Credentials credentials,
+      Optional<Checksum> checksum,
+      String canonicalId,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv,
+      String context)
+      throws IOException, InterruptedException {
+    Downloader downloader = defaultDelegate;
+    if (delegate != null) {
+      downloader = delegate;
+    }
+    return downloader.downloadAndRead(
+        urls, headers, credentials, checksum, canonicalId, eventHandler, clientEnv, context);
+  }
 }

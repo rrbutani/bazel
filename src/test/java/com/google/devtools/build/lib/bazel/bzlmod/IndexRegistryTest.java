@@ -20,6 +20,15 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.devtools.build.lib.bazel.bzlmod.BzlmodTestUtil.createModuleKey;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
@@ -36,11 +45,13 @@ import com.google.devtools.build.lib.bazel.repository.RepositoryOptions.Lockfile
 import com.google.devtools.build.lib.bazel.repository.cache.DownloadCache;
 import com.google.devtools.build.lib.bazel.repository.downloader.Checksum;
 import com.google.devtools.build.lib.bazel.repository.downloader.DownloadManager;
+import com.google.devtools.build.lib.bazel.repository.downloader.Downloader;
 import com.google.devtools.build.lib.bazel.repository.downloader.HttpDownloader;
 import com.google.devtools.build.lib.testutil.FoundationTestCase;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -170,6 +181,120 @@ public class IndexRegistryTest extends FoundationTestCase {
     assertThrows(
         Registry.NotFoundException.class,
         () -> registry.getModuleFile(createModuleKey("bar", "1.0"), reporter, downloadManager));
+  }
+
+  @Test
+  public void testModuleFilePrefetchDisabled_onlyDownloadsDemandedModuleFile() throws Exception {
+    Downloader generalDownloader = mock(Downloader.class);
+    HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
+    when(generalDownloader.downloadAndRead(any(), anyMap(), any(), any(), eq(""), any(), anyMap(), any()))
+        .thenAnswer(
+            invocation ->
+                moduleFileBytesForUrl(
+                    ((ImmutableList<URI>) invocation.getArgument(0)).getFirst().toString()));
+    DownloadManager prefetchDisabledDownloadManager =
+        new DownloadManager(downloadCache, generalDownloader, legacyBzlmodDownloader, reporter);
+    String fooUrl = server.getUrl() + "/myreg/modules/foo/1.0/MODULE.bazel";
+    String barUrl = server.getUrl() + "/myreg/modules/bar/1.0/MODULE.bazel";
+    Registry registry =
+        registryFactory.createRegistry(
+            server.getUrl() + "/myreg",
+            LockfileMode.UPDATE,
+            ImmutableMap.of(fooUrl, Optional.of(sha256ForModule("foo", "1.0")), barUrl, Optional.of(sha256ForModule("bar", "1.0"))),
+            ImmutableMap.of(),
+            Optional.empty(),
+            ImmutableSet.of());
+
+    assertThat(
+            registry.getModuleFile(
+                createModuleKey("foo", "1.0"), reporter, prefetchDisabledDownloadManager))
+        .isEqualTo(ModuleFile.create(moduleFileBytesForUrl(fooUrl), fooUrl));
+
+    verify(generalDownloader)
+        .downloadAndRead(
+            eq(ImmutableList.of(URI.create(fooUrl))),
+            anyMap(),
+            any(),
+            eq(Optional.of(sha256ForModule("foo", "1.0"))),
+            eq(""),
+            eq(reporter),
+            anyMap(),
+            eq("Bazel module fetching"));
+    verify(generalDownloader, never())
+        .downloadAndRead(
+            eq(ImmutableList.of(URI.create(barUrl))),
+            anyMap(),
+            any(),
+            eq(Optional.of(sha256ForModule("bar", "1.0"))),
+            eq(""),
+            eq(reporter),
+            anyMap(),
+            eq("Bazel module fetching"));
+    verifyNoInteractions(legacyBzlmodDownloader);
+  }
+
+  @Test
+  public void testModuleFilePrefetchEnabled_prefetchesChecksummedModuleFilesOnly()
+      throws Exception {
+    Downloader generalDownloader = mock(Downloader.class);
+    HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
+    when(generalDownloader.downloadAndRead(any(), anyMap(), any(), any(), eq(""), any(), anyMap(), any()))
+        .thenAnswer(
+            invocation ->
+                moduleFileBytesForUrl(
+                    ((ImmutableList<URI>) invocation.getArgument(0)).getFirst().toString()));
+    DownloadManager prefetchedDownloadManager =
+        new DownloadManager(
+            downloadCache,
+            generalDownloader,
+            legacyBzlmodDownloader,
+            reporter,
+            /* prefetchRegistryModuleFiles= */ true);
+    String fooUrl = server.getUrl() + "/myreg/modules/foo/1.0/MODULE.bazel";
+    String barUrl = server.getUrl() + "/myreg/modules/bar/1.0/MODULE.bazel";
+    Registry registry =
+        registryFactory.createRegistry(
+            server.getUrl() + "/myreg",
+            LockfileMode.UPDATE,
+            ImmutableMap.of(
+                fooUrl,
+                Optional.of(sha256ForModule("foo", "1.0")),
+                barUrl,
+                Optional.of(sha256ForModule("bar", "1.0")),
+                server.getUrl() + "/myreg/modules/foo/1.0/source.json",
+                Optional.of(sha256("source")),
+                server.getUrl() + "/myreg/modules/baz/1.0/MODULE.bazel",
+                Optional.empty()),
+            ImmutableMap.of(),
+            Optional.empty(),
+            ImmutableSet.of());
+
+    assertThat(
+            registry.getModuleFile(
+                createModuleKey("foo", "1.0"), reporter, prefetchedDownloadManager))
+        .isEqualTo(ModuleFile.create(moduleFileBytesForUrl(fooUrl), fooUrl));
+
+    verify(generalDownloader, timeout(2000))
+        .downloadAndRead(
+            eq(ImmutableList.of(URI.create(fooUrl))),
+            anyMap(),
+            any(),
+            eq(Optional.of(sha256ForModule("foo", "1.0"))),
+            eq(""),
+            eq(reporter),
+            anyMap(),
+            eq("Bazel module fetching"));
+    verify(generalDownloader, timeout(2000))
+        .downloadAndRead(
+            eq(ImmutableList.of(URI.create(barUrl))),
+            anyMap(),
+            any(),
+            eq(Optional.of(sha256ForModule("bar", "1.0"))),
+            eq(""),
+            eq(reporter),
+            anyMap(),
+            eq("Bazel module fetching"));
+    verifyNoInteractions(legacyBzlmodDownloader);
   }
 
   @Test
@@ -1118,5 +1243,17 @@ public class IndexRegistryTest extends FoundationTestCase {
   private static Checksum sha256(String content) throws Checksum.InvalidChecksumException {
     return Checksum.fromString(
         DownloadCache.KeyType.SHA256, Hashing.sha256().hashString(content, UTF_8).toString());
+  }
+
+  private static Checksum sha256ForModule(String moduleName, String version)
+      throws Checksum.InvalidChecksumException {
+    return sha256(new String(moduleFileBytesForUrl("https://example.com/modules/" + moduleName + "/" + version + "/MODULE.bazel"), UTF_8));
+  }
+
+  private static byte[] moduleFileBytesForUrl(String url) {
+    String[] segments = url.split("/");
+    String moduleName = segments[segments.length - 3];
+    String version = segments[segments.length - 2];
+    return ("module(name = \"" + moduleName + "\", version = \"" + version + "\")").getBytes(UTF_8);
   }
 }
