@@ -53,7 +53,7 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Tests for registry module file prefetching in {@link DownloadManager}. */
+/** Tests for registry file prefetching in {@link DownloadManager}. */
 @RunWith(JUnit4.class)
 public final class DownloadManagerPrefetchTest {
 
@@ -69,7 +69,7 @@ public final class DownloadManagerPrefetchTest {
   }
 
   @Test
-  public void prefetchRegistryModuleFiles_skipsIneligibleEntriesAndUsesGeneralDownloader()
+  public void prefetchRegistryFiles_skipsIneligibleEntriesAndUsesGeneralDownloader()
       throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
@@ -80,7 +80,7 @@ public final class DownloadManagerPrefetchTest {
     try (DownloadManager downloadManager =
         newDownloadManager(new DownloadCache(), generalDownloader, legacyBzlmodDownloader, true)) {
       Checksum checksum = sha256("module(name='foo')");
-      downloadManager.prefetchRegistryModuleFiles(
+      downloadManager.prefetchRegistryFiles(
           URI.create("https://registry.example/base"),
           ImmutableMap.of(),
           ImmutableMap.of(
@@ -88,9 +88,11 @@ public final class DownloadManagerPrefetchTest {
               Optional.of(checksum),
               "https://registry.example/base/modules/foo/1.0/source.json",
               Optional.of(checksum),
+              "https://registry.example/base/modules/foo/metadata.json",
+              Optional.of(checksum),
               "https://registry.example/base/modules/foo/1.0/patches/a.patch",
               Optional.of(checksum),
-              "https://registry.example/base/metadata.json",
+              "https://registry.example/base/bazel_registry.json",
               Optional.of(checksum),
               "https://other.example/base/modules/bar/1.0/MODULE.bazel",
               Optional.of(checksum),
@@ -109,12 +111,42 @@ public final class DownloadManagerPrefetchTest {
               eq(eventHandler),
               anyMap(),
               eq("Bazel module fetching"));
+      verify(generalDownloader, timeout(2000).times(1))
+          .downloadAndRead(
+              eq(ImmutableList.of(URI.create("https://registry.example/base/modules/foo/1.0/source.json"))),
+              anyMap(),
+              any(),
+              eq(Optional.of(checksum)),
+              eq(""),
+              eq(eventHandler),
+              anyMap(),
+              eq("Bazel module fetching"));
+      verify(generalDownloader, timeout(2000).times(1))
+          .downloadAndRead(
+              eq(ImmutableList.of(URI.create("https://registry.example/base/modules/foo/metadata.json"))),
+              anyMap(),
+              any(),
+              eq(Optional.of(checksum)),
+              eq(""),
+              eq(eventHandler),
+              anyMap(),
+              eq("Bazel module fetching"));
+      verify(generalDownloader, timeout(2000).times(1))
+          .downloadAndRead(
+              eq(ImmutableList.of(URI.create("https://registry.example/base/bazel_registry.json"))),
+              anyMap(),
+              any(),
+              eq(Optional.of(checksum)),
+              eq(""),
+              eq(eventHandler),
+              anyMap(),
+              eq("Bazel module fetching"));
       verifyNoInteractions(legacyBzlmodDownloader);
     }
   }
 
   @Test
-  public void downloadAndReadRegistryModuleFile_reusesInFlightPrefetchForConcurrentDemand()
+  public void downloadAndReadRegistryFile_reusesInFlightPrefetchForConcurrentDemand()
       throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
@@ -136,7 +168,7 @@ public final class DownloadManagerPrefetchTest {
     Checksum checksum = sha256("module(name='foo')");
     try (DownloadManager downloadManager =
         newDownloadManager(new DownloadCache(), generalDownloader, legacyBzlmodDownloader, true)) {
-      downloadManager.prefetchRegistryModuleFiles(
+      downloadManager.prefetchRegistryFiles(
           URI.create("https://registry.example"),
           ImmutableMap.of(),
           ImmutableMap.of(url.toString(), Optional.of(checksum)));
@@ -145,12 +177,12 @@ public final class DownloadManagerPrefetchTest {
       Future<byte[]> first =
           executor.submit(
               () ->
-                  downloadManager.downloadAndReadRegistryModuleFile(
+                  downloadManager.downloadAndReadRegistryFile(
                       url, ImmutableMap.of(), Optional.of(checksum)));
       Future<byte[]> second =
           executor.submit(
               () ->
-                  downloadManager.downloadAndReadRegistryModuleFile(
+                  downloadManager.downloadAndReadRegistryFile(
                       url, ImmutableMap.of(), Optional.of(checksum)));
 
       release.countDown();
@@ -161,7 +193,7 @@ public final class DownloadManagerPrefetchTest {
   }
 
   @Test
-  public void downloadAndReadRegistryModuleFile_cacheHitAvoidsDownloader() throws Exception {
+  public void downloadAndReadRegistryFile_cacheHitAvoidsDownloader() throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
     DownloadCache downloadCache = new DownloadCache();
@@ -173,13 +205,13 @@ public final class DownloadManagerPrefetchTest {
     URI url = URI.create("https://registry.example/modules/foo/1.0/MODULE.bazel");
     try (DownloadManager downloadManager =
         newDownloadManager(downloadCache, generalDownloader, legacyBzlmodDownloader, true)) {
-      downloadManager.prefetchRegistryModuleFiles(
+      downloadManager.prefetchRegistryFiles(
           URI.create("https://registry.example"),
           ImmutableMap.of(),
           ImmutableMap.of(url.toString(), Optional.of(checksum)));
 
       assertThat(
-              downloadManager.downloadAndReadOneUrlForBzlmod(
+              downloadManager.downloadAndReadRegistryFile(
                   url, ImmutableMap.of(), Optional.of(checksum)))
           .isEqualTo(bytes);
       verifyNoInteractions(generalDownloader);
@@ -201,7 +233,7 @@ public final class DownloadManagerPrefetchTest {
     try (DownloadManager downloadManager =
         newDownloadManager(downloadCache, generalDownloader, legacyBzlmodDownloader, true)) {
       assertThat(
-              downloadManager.downloadAndReadRegistryModuleFile(
+              downloadManager.downloadAndReadOneUrlForBzlmod(
                   url, ImmutableMap.of(), Optional.of(checksum)))
           .isEqualTo(bytes);
       verifyNoInteractions(generalDownloader);
@@ -210,7 +242,7 @@ public final class DownloadManagerPrefetchTest {
   }
 
   @Test
-  public void downloadAndReadRegistryModuleFile_failedPrefetchFallsBackToFreshDownload()
+  public void downloadAndReadRegistryFile_failedPrefetchFallsBackToFreshDownload()
       throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
@@ -223,13 +255,13 @@ public final class DownloadManagerPrefetchTest {
     Checksum checksum = sha256("module(name='foo')");
     try (DownloadManager downloadManager =
         newDownloadManager(new DownloadCache(), generalDownloader, legacyBzlmodDownloader, true)) {
-      downloadManager.prefetchRegistryModuleFiles(
+      downloadManager.prefetchRegistryFiles(
           URI.create("https://registry.example"),
           ImmutableMap.of(),
           ImmutableMap.of(url.toString(), Optional.of(checksum)));
 
       assertThat(
-              downloadManager.downloadAndReadRegistryModuleFile(
+              downloadManager.downloadAndReadRegistryFile(
                   url, ImmutableMap.of(), Optional.of(checksum)))
           .isEqualTo(bytes);
       verify(generalDownloader, times(2))
@@ -285,7 +317,7 @@ public final class DownloadManagerPrefetchTest {
     Checksum checksum = sha256("module(name='foo')");
     DownloadManager downloadManager =
         newDownloadManager(new DownloadCache(), generalDownloader, legacyBzlmodDownloader, true);
-    downloadManager.prefetchRegistryModuleFiles(
+    downloadManager.prefetchRegistryFiles(
         URI.create("https://registry.example"),
         ImmutableMap.of(),
         ImmutableMap.of(url.toString(), Optional.of(checksum)));
@@ -297,9 +329,50 @@ public final class DownloadManagerPrefetchTest {
     assertThrows(
         InterruptedException.class,
         () ->
-            downloadManager.downloadAndReadRegistryModuleFile(
+            downloadManager.downloadAndReadRegistryFile(
                 url, ImmutableMap.of(), Optional.of(checksum)));
-    verify(legacyBzlmodDownloader, never()).downloadAndRead(any(), any(), any(), any(), any(), any(), anyMap(), any());
+    verify(legacyBzlmodDownloader, never())
+        .downloadAndRead(any(), any(), any(), any(), any(), any(), anyMap(), any());
+  }
+
+  @Test
+  public void downloadAndReadRegistryFile_reusesInFlightPrefetchForSourceJson() throws Exception {
+    Downloader generalDownloader = mock(Downloader.class);
+    HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
+    CountDownLatch started = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    AtomicInteger calls = new AtomicInteger();
+    byte[] bytes = "{\"url\":\"https://example.com/archive.zip\"}".getBytes(UTF_8);
+    doAnswer(
+            invocation -> {
+              calls.incrementAndGet();
+              started.countDown();
+              release.await();
+              return bytes;
+            })
+        .when(generalDownloader)
+        .downloadAndRead(any(), anyMap(), any(), any(), any(), any(), anyMap(), any());
+
+    URI url = URI.create("https://registry.example/modules/foo/1.0/source.json");
+    Checksum checksum = sha256("{\"url\":\"https://example.com/archive.zip\"}");
+    try (DownloadManager downloadManager =
+        newDownloadManager(new DownloadCache(), generalDownloader, legacyBzlmodDownloader, true)) {
+      downloadManager.prefetchRegistryFiles(
+          URI.create("https://registry.example"),
+          ImmutableMap.of(),
+          ImmutableMap.of(url.toString(), Optional.of(checksum)));
+      assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+
+      Future<byte[]> demand =
+          executor.submit(
+              () ->
+                  downloadManager.downloadAndReadRegistryFile(
+                      url, ImmutableMap.of(), Optional.of(checksum)));
+
+      release.countDown();
+      assertThat(demand.get()).isEqualTo(bytes);
+      assertThat(calls.get()).isEqualTo(1);
+    }
   }
 
   private DownloadManager newDownloadManager(

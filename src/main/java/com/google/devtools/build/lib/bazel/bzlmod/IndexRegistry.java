@@ -166,6 +166,7 @@ public class IndexRegistry implements Registry {
 
   private byte[] doGrabFile(DownloadManager downloadManager, String rawUrl, boolean useChecksum)
       throws IOException, InterruptedException, NotFoundException {
+    downloadManager.prefetchRegistryFiles(uri, clientEnv, knownFileHashes);
     Optional<Checksum> checksum;
     if (knownFileHashesMode != KnownFileHashesMode.IGNORE && useChecksum) {
       Optional<Checksum> knownChecksum = knownFileHashes.get(rawUrl);
@@ -233,9 +234,7 @@ public class IndexRegistry implements Registry {
 
     try (SilentCloseable c =
         Profiler.instance().profile(ProfilerTask.BZLMOD, () -> "download file: " + rawUrl)) {
-      return rawUrl.endsWith("/MODULE.bazel")
-          ? downloadManager.downloadAndReadRegistryModuleFile(url, clientEnv, checksum)
-          : downloadManager.downloadAndReadOneUrlForBzlmod(url, clientEnv, checksum);
+      return downloadManager.downloadAndReadRegistryFile(url, clientEnv, checksum);
     } catch (FileNotFoundException e) {
       throw new NotFoundException(String.format("%s: not found", rawUrl));
     } catch (IOException e) {
@@ -249,7 +248,6 @@ public class IndexRegistry implements Registry {
   public ModuleFile getModuleFile(
       ModuleKey key, ExtendedEventHandler eventHandler, DownloadManager downloadManager)
       throws IOException, InterruptedException, NotFoundException {
-    downloadManager.prefetchRegistryModuleFiles(uri, clientEnv, knownFileHashes);
     String url = constructModuleFileUrl(key);
     byte[] content = grabFile(url, eventHandler, downloadManager, /* useChecksum= */ true);
     return ModuleFile.create(content, url);
