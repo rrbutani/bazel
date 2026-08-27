@@ -488,9 +488,12 @@ public class DownloadManager implements AutoCloseable {
    * @throws IOException if download was attempted and ended up failing
    * @throws InterruptedException if this thread is being cast into oblivion
    */
-  public byte[] downloadAndReadOneUrlForBzlmod(
+  public byte[] downloadAndReadRegistryModuleFile(
       URI originalUrl, Map<String, String> clientEnv, Optional<Checksum> checksum)
       throws IOException, InterruptedException {
+    if (registryModuleFilePrefetchExecutor == null || checksum.isEmpty()) {
+      return downloadAndReadOneUrlForBzlmod(originalUrl, clientEnv, checksum);
+    }
     if (Thread.interrupted()) {
       throw new InterruptedException();
     }
@@ -529,11 +532,89 @@ public class DownloadManager implements AutoCloseable {
             throw new InterruptedException(interrupted.getMessage());
           }
           Throwables.throwIfUnchecked(cause);
+          if (!(cause instanceof IOException)) {
+            throw new IllegalStateException(cause);
+          }
         }
       }
     }
     return downloadAndReadOneUrlForBzlmodDirect(
         originalUrl, clientEnv, checksum, /* bestEffortCacheWrite= */ false);
+  }
+
+  public byte[] downloadAndReadOneUrlForBzlmod(
+      URI originalUrl, Map<String, String> clientEnv, Optional<Checksum> checksum)
+      throws IOException, InterruptedException {
+    if (Thread.interrupted()) {
+      throw new InterruptedException();
+    }
+
+    Optional<byte[]> cacheHit = getBytesFromCache(originalUrl, checksum);
+    if (cacheHit.isPresent()) {
+      return cacheHit.get();
+    }
+
+    Map<URI, Map<String, List<String>>> authHeaders = ImmutableMap.of();
+    ImmutableList<URI> rewrittenUrls = ImmutableList.of(originalUrl);
+
+    if (netrcCreds != null) {
+      try {
+        Map<String, List<String>> metadata = netrcCreds.getRequestMetadata(originalUrl);
+        if (!metadata.isEmpty()) {
+          Entry<String, List<String>> headers = metadata.entrySet().iterator().next();
+          authHeaders =
+              ImmutableMap.of(
+                  originalUrl,
+                  ImmutableMap.of(headers.getKey(), ImmutableList.of(headers.getValue().get(0))));
+        }
+      } catch (IOException e) {
+        // If the credentials extraction failed, we're letting bazel try without credentials.
+      }
+    }
+
+    if (rewriter != null) {
+      ImmutableList<UrlRewriter.RewrittenURL> rewrittenUrlMappings =
+          rewriter.amend(ImmutableList.of(originalUrl));
+      rewrittenUrls =
+          rewrittenUrlMappings.stream().map(RewrittenURL::url).collect(toImmutableList());
+      authHeaders = rewriter.updateAuthHeaders(rewrittenUrlMappings, authHeaders, netrcCreds);
+    }
+
+    if (rewrittenUrls.isEmpty()) {
+      throw new IOException(getRewriterBlockedAllUrlsMessage(ImmutableList.of(originalUrl)));
+    }
+
+    byte[] content;
+    for (int attempt = 0; ; ++attempt) {
+      try {
+        content =
+            bzlmodHttpDownloader.downloadAndRead(
+                rewrittenUrls,
+                credentialFactory.create(authHeaders),
+                checksum,
+                eventHandler,
+                clientEnv);
+        break;
+      } catch (InterruptedIOException e) {
+        throw new InterruptedException(e.getMessage());
+      } catch (IOException e) {
+        if (!shouldRetryDownload(e, attempt)) {
+          throw e;
+        }
+      }
+    }
+    if (content == null) {
+      throw new IllegalStateException("Unexpected error: file should have been downloaded.");
+    }
+
+    if (downloadCache.isEnabled()) {
+      if (checksum.isPresent()) {
+        downloadCache.put(checksum.get().toString(), content, checksum.get().getKeyType());
+      } else {
+        downloadCache.put(content, KeyType.SHA256);
+      }
+    }
+    return content;
   }
 
   private Optional<byte[]> getBytesFromCache(URI originalUrl, Optional<Checksum> checksum) {
@@ -549,6 +630,8 @@ public class DownloadManager implements AutoCloseable {
       }
     } catch (IOException e) {
       // Ignore error trying to get. We'll just download again.
+    } catch (InterruptedException e) {
+      // ??
     }
     return Optional.empty();
   }
