@@ -23,11 +23,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.hash.Hashing;
 import com.google.devtools.build.lib.bazel.repository.cache.DownloadCache;
@@ -37,10 +39,8 @@ import com.google.devtools.build.lib.vfs.JavaIoFileSystem;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.URI;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -99,7 +99,7 @@ public final class DownloadManagerPrefetchTest {
               "https://registry.example/base/modules/missing/1.0/MODULE.bazel",
               Optional.empty()));
 
-      verify(generalDownloader, times(1))
+      verify(generalDownloader, timeout(2000).times(1))
           .downloadAndRead(
               eq(ImmutableList.of(URI.create("https://registry.example/base/modules/foo/1.0/MODULE.bazel"))),
               anyMap(),
@@ -114,7 +114,7 @@ public final class DownloadManagerPrefetchTest {
   }
 
   @Test
-  public void downloadAndReadOneUrlForBzlmod_reusesInFlightPrefetchForConcurrentDemand()
+  public void downloadAndReadRegistryModuleFile_reusesInFlightPrefetchForConcurrentDemand()
       throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
@@ -145,12 +145,12 @@ public final class DownloadManagerPrefetchTest {
       Future<byte[]> first =
           executor.submit(
               () ->
-                  downloadManager.downloadAndReadOneUrlForBzlmod(
+                  downloadManager.downloadAndReadRegistryModuleFile(
                       url, ImmutableMap.of(), Optional.of(checksum)));
       Future<byte[]> second =
           executor.submit(
               () ->
-                  downloadManager.downloadAndReadOneUrlForBzlmod(
+                  downloadManager.downloadAndReadRegistryModuleFile(
                       url, ImmutableMap.of(), Optional.of(checksum)));
 
       release.countDown();
@@ -161,7 +161,7 @@ public final class DownloadManagerPrefetchTest {
   }
 
   @Test
-  public void downloadAndReadOneUrlForBzlmod_cacheHitAvoidsDownloader() throws Exception {
+  public void downloadAndReadRegistryModuleFile_cacheHitAvoidsDownloader() throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
     DownloadCache downloadCache = new DownloadCache();
@@ -188,7 +188,29 @@ public final class DownloadManagerPrefetchTest {
   }
 
   @Test
-  public void downloadAndReadOneUrlForBzlmod_failedPrefetchFallsBackToFreshDownload()
+  public void downloadAndReadOneUrlForBzlmod_cacheHitAvoidsDownloader() throws Exception {
+    Downloader generalDownloader = mock(Downloader.class);
+    HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
+    DownloadCache downloadCache = new DownloadCache();
+    downloadCache.setPath(fileSystem.getPath(temporaryFolder.newFolder("cache-direct").getAbsolutePath()));
+    byte[] bytes = "module(name='foo')".getBytes(UTF_8);
+    Checksum checksum = sha256("module(name='foo')");
+    downloadCache.put(checksum.toString(), bytes, checksum.getKeyType());
+
+    URI url = URI.create("https://registry.example/modules/foo/1.0/MODULE.bazel");
+    try (DownloadManager downloadManager =
+        newDownloadManager(downloadCache, generalDownloader, legacyBzlmodDownloader, true)) {
+      assertThat(
+              downloadManager.downloadAndReadRegistryModuleFile(
+                  url, ImmutableMap.of(), Optional.of(checksum)))
+          .isEqualTo(bytes);
+      verifyNoInteractions(generalDownloader);
+      verifyNoInteractions(legacyBzlmodDownloader);
+    }
+  }
+
+  @Test
+  public void downloadAndReadRegistryModuleFile_failedPrefetchFallsBackToFreshDownload()
       throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
@@ -207,11 +229,34 @@ public final class DownloadManagerPrefetchTest {
           ImmutableMap.of(url.toString(), Optional.of(checksum)));
 
       assertThat(
-              downloadManager.downloadAndReadOneUrlForBzlmod(
+              downloadManager.downloadAndReadRegistryModuleFile(
                   url, ImmutableMap.of(), Optional.of(checksum)))
           .isEqualTo(bytes);
       verify(generalDownloader, times(2))
           .downloadAndRead(any(), anyMap(), any(), any(), any(), any(), anyMap(), any());
+    }
+  }
+
+  @Test
+  public void downloadAndReadOneUrlForBzlmod_usesLegacyBzlmodDownloader() throws Exception {
+    Downloader generalDownloader = mock(Downloader.class);
+    HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
+    byte[] bytes = "module(name='foo')".getBytes(UTF_8);
+    when(legacyBzlmodDownloader.downloadAndRead(any(), any(), any(), any(), anyMap()))
+        .thenReturn(bytes);
+
+    URI url = URI.create("https://registry.example/modules/foo/1.0/MODULE.bazel");
+    Checksum checksum = sha256("module(name='foo')");
+    try (DownloadManager downloadManager =
+        newDownloadManager(new DownloadCache(), generalDownloader, legacyBzlmodDownloader, true)) {
+      assertThat(
+              downloadManager.downloadAndReadOneUrlForBzlmod(
+                  url, ImmutableMap.of(), Optional.of(checksum)))
+          .isEqualTo(bytes);
+      verify(legacyBzlmodDownloader)
+          .downloadAndRead(
+              eq(ImmutableList.of(url)), any(), eq(Optional.of(checksum)), eq(eventHandler), anyMap());
+      verifyNoInteractions(generalDownloader);
     }
   }
 
@@ -251,7 +296,9 @@ public final class DownloadManagerPrefetchTest {
     assertThat(interrupted.await(5, TimeUnit.SECONDS)).isTrue();
     assertThrows(
         InterruptedException.class,
-        () -> downloadManager.downloadAndReadOneUrlForBzlmod(url, ImmutableMap.of(), Optional.of(checksum)));
+        () ->
+            downloadManager.downloadAndReadRegistryModuleFile(
+                url, ImmutableMap.of(), Optional.of(checksum)));
     verify(legacyBzlmodDownloader, never()).downloadAndRead(any(), any(), any(), any(), any(), any(), anyMap(), any());
   }
 
