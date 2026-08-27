@@ -511,6 +511,21 @@ static vector<string> GetServerExeArgs(const blaze_util::Path &jvm_path,
 
     startup_options.AddJVMArgumentSuffix(real_install_dir, server_jar_path,
                                          &result);
+  } else {
+    // still add the keystore arguments, even when using the native image:
+    vector<string> user_options = startup_options.host_jvm_args;
+
+    startup_options.AddKeystoreArguments(&result, user_options);
+
+    for (const auto& opt : user_options) {
+      if (blaze_util::starts_with(opt, "-Djavax.net.ssl.trustStore=") ||
+          blaze_util::starts_with(opt, "-Djavax.net.ssl.trustStoreType=")) {
+        result.push_back(opt);
+      }
+      if (blaze_util::starts_with(opt, "-Djavax.net.ssl.trustStorePassword=")) {
+        result.push_back(opt);
+      }
+    }
   }
 
   // Executable-specific arguments are complete. Now pass in Blaze startup
