@@ -275,46 +275,6 @@ public class GrpcRemoteDownloaderTest {
               FetchBlobRequest request, StreamObserver<FetchBlobResponse> responseObserver) {
             responseObserver.onError(new IOException("io error"));
           }
-
-          @Test
-          public void testDownloadAndReadFallsBackToHttpOnRemoteNotFound() throws Exception {
-            final byte[] content = "example content".getBytes(UTF_8);
-            serviceRegistry.addService(
-                new FetchImplBase() {
-                  @Override
-                  public void fetchBlob(
-                      FetchBlobRequest request, StreamObserver<FetchBlobResponse> responseObserver) {
-                    responseObserver.onNext(
-                        FetchBlobResponse.newBuilder()
-                            .setStatus(Status.newBuilder().setCode(Code.NOT_FOUND_VALUE).build())
-                            .build());
-                    responseObserver.onCompleted();
-                  }
-                });
-            final RemoteCacheClient cacheClient = new InMemoryCacheClient();
-            Downloader fallbackDownloader = mock(Downloader.class);
-            doAnswer(
-                    invocation -> {
-                      List<URI> urls = invocation.getArgument(0);
-                      if (urls.equals(ImmutableList.of(URI.create("http://example.com/content.txt")))) {
-                        return content;
-                      }
-                      return null;
-                    })
-                .when(fallbackDownloader)
-                .downloadAndRead(any(), any(), any(), any(), any(), any(), any(), any());
-            final GrpcRemoteDownloader downloader = newDownloader(cacheClient, fallbackDownloader);
-
-            final byte[] downloaded =
-                downloadBlobInMemory(
-                    downloader, URI.create("http://example.com/content.txt"), Optional.<Checksum>empty());
-
-            assertThat(downloaded).isEqualTo(content);
-            assertThat(eventHandler.getPosts())
-                .contains(
-                    new FetchEvent(
-                        "http://example.com/content.txt", FetchId.Downloader.GRPC, /* success= */ false));
-          }
         });
     final RemoteCacheClient cacheClient = new InMemoryCacheClient();
     Downloader fallbackDownloader = mock(Downloader.class);
@@ -338,6 +298,46 @@ public class GrpcRemoteDownloaderTest {
     assertThat(downloaded).isEqualTo(content);
     assertThat(eventHandler.getPosts())
         .containsExactly(
+            new FetchEvent(
+                "http://example.com/content.txt", FetchId.Downloader.GRPC, /* success= */ false));
+  }
+
+  @Test
+  public void testDownloadAndReadFallsBackToHttpOnRemoteNotFound() throws Exception {
+    final byte[] content = "example content".getBytes(UTF_8);
+    serviceRegistry.addService(
+        new FetchImplBase() {
+          @Override
+          public void fetchBlob(
+              FetchBlobRequest request, StreamObserver<FetchBlobResponse> responseObserver) {
+            responseObserver.onNext(
+                FetchBlobResponse.newBuilder()
+                    .setStatus(Status.newBuilder().setCode(Code.NOT_FOUND_VALUE).build())
+                    .build());
+            responseObserver.onCompleted();
+          }
+        });
+    final RemoteCacheClient cacheClient = new InMemoryCacheClient();
+    Downloader fallbackDownloader = mock(Downloader.class);
+    doAnswer(
+            invocation -> {
+              List<URI> urls = invocation.getArgument(0);
+              if (urls.equals(ImmutableList.of(URI.create("http://example.com/content.txt")))) {
+                return content;
+              }
+              return null;
+            })
+        .when(fallbackDownloader)
+        .downloadAndRead(any(), any(), any(), any(), any(), any(), any(), any());
+    final GrpcRemoteDownloader downloader = newDownloader(cacheClient, fallbackDownloader);
+
+    final byte[] downloaded =
+        downloadBlobInMemory(
+            downloader, URI.create("http://example.com/content.txt"), Optional.<Checksum>empty());
+
+    assertThat(downloaded).isEqualTo(content);
+    assertThat(eventHandler.getPosts())
+        .contains(
             new FetchEvent(
                 "http://example.com/content.txt", FetchId.Downloader.GRPC, /* success= */ false));
   }

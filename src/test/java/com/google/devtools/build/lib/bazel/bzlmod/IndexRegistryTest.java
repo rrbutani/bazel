@@ -187,7 +187,8 @@ public class IndexRegistryTest extends FoundationTestCase {
   public void testModuleFilePrefetchDisabled_onlyDownloadsDemandedModuleFile() throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
-    when(generalDownloader.downloadAndRead(any(), anyMap(), any(), any(), eq(""), any(), anyMap(), any()))
+    server.start();
+    when(legacyBzlmodDownloader.downloadAndRead(any(), any(), any(), any(), anyMap()))
         .thenAnswer(
             invocation ->
                 moduleFileBytesForUrl(
@@ -210,27 +211,21 @@ public class IndexRegistryTest extends FoundationTestCase {
                 createModuleKey("foo", "1.0"), reporter, prefetchDisabledDownloadManager))
         .isEqualTo(ModuleFile.create(moduleFileBytesForUrl(fooUrl), fooUrl));
 
-    verify(generalDownloader)
+    verify(legacyBzlmodDownloader)
         .downloadAndRead(
             eq(ImmutableList.of(URI.create(fooUrl))),
-            anyMap(),
             any(),
             eq(Optional.of(sha256ForModule("foo", "1.0"))),
-            eq(""),
             eq(reporter),
-            anyMap(),
-            eq("Bazel module fetching"));
-    verify(generalDownloader, never())
+            anyMap());
+    verify(legacyBzlmodDownloader, never())
         .downloadAndRead(
             eq(ImmutableList.of(URI.create(barUrl))),
-            anyMap(),
             any(),
             eq(Optional.of(sha256ForModule("bar", "1.0"))),
-            eq(""),
             eq(reporter),
-            anyMap(),
-            eq("Bazel module fetching"));
-    verifyNoInteractions(legacyBzlmodDownloader);
+            anyMap());
+    verifyNoInteractions(generalDownloader);
   }
 
   @Test
@@ -238,6 +233,7 @@ public class IndexRegistryTest extends FoundationTestCase {
       throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
+    server.start();
     when(generalDownloader.downloadAndRead(any(), anyMap(), any(), any(), eq(""), any(), anyMap(), any()))
         .thenAnswer(
             invocation ->
