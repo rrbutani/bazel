@@ -667,6 +667,7 @@ blaze_exit_code::ExitCode StartupOptions::AddJVMArguments(
           "/etc/pki/java/cacerts",
           "/etc/pki/ca-trust/extracted/java/cacerts",
           "/etc/ssl/certs/cacerts",
+          "/var/lib/ca-certificates/java-cacerts",
       };
       for (const char* path : kSystemCacertsPaths) {
         struct stat st;
