@@ -197,7 +197,6 @@ cc_binary(
         ":startup_interceptor",
         ":startup_options",
         ":workspace_layout",
-        "//src/main/cpp/util",
         "//src/main/cpp/util:bazel_log_handler",
         "//src/main/cpp/util:errors",
         "//src/main/cpp/util:logging",
