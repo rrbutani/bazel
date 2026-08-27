@@ -121,17 +121,20 @@ public class HttpDownloader implements Downloader {
    */
   public byte[] downloadAndRead(
       List<URI> urls,
+      Map<String, List<String>> headers,
       Credentials credentials,
       Optional<Checksum> checksum,
+      String canonicalId,
       ExtendedEventHandler eventHandler,
-      Map<String, String> clientEnv)
+      Map<String, String> clientEnv,
+      String context)
       throws IOException, InterruptedException {
     checkArgument(!urls.isEmpty(), "Cannot download from an empty list of URLs");
     // Buffer the (small) registry file in memory and return the bytes. Unlike download(), this
     // posts no progress events and preserves the type of the failing exception for the caller.
     return downloadFromUrls(
         urls,
-        ImmutableMap.of(),
+        headers,
         credentials,
         checksum,
         Optional.empty(),
@@ -144,6 +147,24 @@ public class HttpDownloader implements Downloader {
           return out.toByteArray();
         },
         HttpDownloader::lastDownloadException);
+  }
+
+  public byte[] downloadAndRead(
+      List<URI> urls,
+      Credentials credentials,
+      Optional<Checksum> checksum,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv)
+      throws IOException, InterruptedException {
+    return downloadAndRead(
+        urls,
+        ImmutableMap.of(),
+        credentials,
+        checksum,
+        "",
+        eventHandler,
+        clientEnv,
+        "Bzlmod registry");
   }
 
   /** Consumes a successfully connected {@link HttpStream}, producing the download's result. */
