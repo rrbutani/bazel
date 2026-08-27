@@ -610,44 +610,9 @@ void StartupOptions::AddJVMArgumentSuffix(
   }
 }
 
-blaze_exit_code::ExitCode StartupOptions::AddJVMArguments(
-    const blaze_util::Path& server_javabase, std::vector<string>* result,
-    const vector<string>& user_options, string* error) const {
-  AddJVMLoggingArguments(result);
-
-  // Disable the JVM's own unlimiting of file descriptors.  We do this
-  // ourselves in blaze.cc so we want our setting to propagate to the JVM.
-  //
-  // The reason to do this is that the JVM's unlimiting is suboptimal on
-  // macOS.  Under that platform, the JVM limits the open file descriptors
-  // to the OPEN_MAX constant... which is much lower than the per-process
-  // kernel allowed limit of kern.maxfilesperproc (which is what we set
-  // ourselves to).
-  result->push_back("-XX:-MaxFDLimit");
-
-  result->push_back(
-      "-XX:OnOutOfMemoryError=touch " +
-      GetOOMFilePath(blaze_util::Path(output_base)).AsJvmArgument());
-
-  bool use_compact_headers = use_compact_object_headers_;
-  if (use_compact_headers) {
-    // If it is true, but it was NOT explicitly set by the user (i.e. it's the
-    // default), only enable it if we are using the embedded JDK to avoid
-    // crashes on older system JDKs.
-    if (option_sources.find("experimental_use_compact_object_headers") ==
-        option_sources.end()) {
-      auto javabase_and_type = GetServerJavabaseAndType();
-      if (javabase_and_type.second != JavabaseType::EMBEDDED) {
-        use_compact_headers = false;
-      }
-    }
-  }
-
-  if (use_compact_headers) {
-    result->push_back("-XX:+UnlockExperimentalVMOptions");
-    result->push_back("-XX:+UseCompactObjectHeaders");
-  }
-
+void StartupOptions::AddKeystoreArguments(
+  std::vector<string>* result, const std::vector<string>& user_options
+) const {
   if (use_system_cacerts) {
     bool has_custom_truststore = false;
     bool has_custom_truststore_password = false;
@@ -700,7 +665,47 @@ blaze_exit_code::ExitCode StartupOptions::AddJVMArguments(
 #endif
     }
   }
+}
 
+blaze_exit_code::ExitCode StartupOptions::AddJVMArguments(
+    const blaze_util::Path& server_javabase, std::vector<string>* result,
+    const vector<string>& user_options, string* error) const {
+  AddJVMLoggingArguments(result);
+
+  // Disable the JVM's own unlimiting of file descriptors.  We do this
+  // ourselves in blaze.cc so we want our setting to propagate to the JVM.
+  //
+  // The reason to do this is that the JVM's unlimiting is suboptimal on
+  // macOS.  Under that platform, the JVM limits the open file descriptors
+  // to the OPEN_MAX constant... which is much lower than the per-process
+  // kernel allowed limit of kern.maxfilesperproc (which is what we set
+  // ourselves to).
+  result->push_back("-XX:-MaxFDLimit");
+
+  result->push_back(
+      "-XX:OnOutOfMemoryError=touch " +
+      GetOOMFilePath(blaze_util::Path(output_base)).AsJvmArgument());
+
+  bool use_compact_headers = use_compact_object_headers_;
+  if (use_compact_headers) {
+    // If it is true, but it was NOT explicitly set by the user (i.e. it's the
+    // default), only enable it if we are using the embedded JDK to avoid
+    // crashes on older system JDKs.
+    if (option_sources.find("experimental_use_compact_object_headers") ==
+        option_sources.end()) {
+      auto javabase_and_type = GetServerJavabaseAndType();
+      if (javabase_and_type.second != JavabaseType::EMBEDDED) {
+        use_compact_headers = false;
+      }
+    }
+  }
+
+  if (use_compact_headers) {
+    result->push_back("-XX:+UnlockExperimentalVMOptions");
+    result->push_back("-XX:+UseCompactObjectHeaders");
+  }
+
+  AddKeystoreArguments(result, user_options);
   return AddJVMMemoryArguments(server_javabase, result, user_options, error);
 }
 
