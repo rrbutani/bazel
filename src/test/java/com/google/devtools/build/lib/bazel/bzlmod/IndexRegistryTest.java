@@ -229,7 +229,7 @@ public class IndexRegistryTest extends FoundationTestCase {
   }
 
   @Test
-  public void testModuleFilePrefetchEnabled_prefetchesChecksummedModuleFilesOnly()
+  public void testRegistryFilePrefetchEnabled_prefetchesChecksummedRegistryFiles()
       throws Exception {
     Downloader generalDownloader = mock(Downloader.class);
     HttpDownloader legacyBzlmodDownloader = mock(HttpDownloader.class);
@@ -248,6 +248,7 @@ public class IndexRegistryTest extends FoundationTestCase {
             /* prefetchRegistryModuleFiles= */ true);
     String fooUrl = server.getUrl() + "/myreg/modules/foo/1.0/MODULE.bazel";
     String barUrl = server.getUrl() + "/myreg/modules/bar/1.0/MODULE.bazel";
+    String fooSourceUrl = server.getUrl() + "/myreg/modules/foo/1.0/source.json";
     Registry registry =
         registryFactory.createRegistry(
             server.getUrl() + "/myreg",
@@ -257,7 +258,7 @@ public class IndexRegistryTest extends FoundationTestCase {
                 Optional.of(sha256ForModule("foo", "1.0")),
                 barUrl,
                 Optional.of(sha256ForModule("bar", "1.0")),
-                server.getUrl() + "/myreg/modules/foo/1.0/source.json",
+                fooSourceUrl,
                 Optional.of(sha256("source")),
                 server.getUrl() + "/myreg/modules/baz/1.0/MODULE.bazel",
                 Optional.empty()),
@@ -286,6 +287,16 @@ public class IndexRegistryTest extends FoundationTestCase {
             anyMap(),
             any(),
             eq(Optional.of(sha256ForModule("bar", "1.0"))),
+            eq(""),
+            eq(reporter),
+            anyMap(),
+            eq("Bazel module fetching"));
+    verify(generalDownloader, timeout(2000))
+        .downloadAndRead(
+            eq(ImmutableList.of(URI.create(fooSourceUrl))),
+            anyMap(),
+            any(),
+            eq(Optional.of(sha256("source"))),
             eq(""),
             eq(reporter),
             anyMap(),
