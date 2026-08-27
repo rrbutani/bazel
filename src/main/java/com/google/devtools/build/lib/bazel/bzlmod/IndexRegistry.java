@@ -20,6 +20,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.devtools.build.lib.bazel.repository.downloader.Checksum;
 import com.google.devtools.build.lib.bazel.bzlmod.Version.ParseException;
 import com.google.devtools.build.lib.bazel.repository.downloader.DownloadManager;
 import com.google.devtools.build.lib.cmdline.RepositoryName;
@@ -41,6 +42,7 @@ import java.net.URL;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Represents a Bazel module registry that serves a list of module metadata from a static HTTP
@@ -58,6 +60,7 @@ public class IndexRegistry implements Registry {
   private final Map<String, String> clientEnv;
   private final Gson gson;
   private volatile Optional<BazelRegistryJson> bazelRegistryJson;
+  private final AtomicBoolean prefetchStarted = new AtomicBoolean(false);
 
   private static final String SOURCE_JSON_FILENAME = "source.json";
 
@@ -93,12 +96,13 @@ public class IndexRegistry implements Registry {
   }
 
   /** Grabs a file from the given URL. Returns {@link Optional#empty} if the file doesn't exist. */
-  private Optional<byte[]> grabFile(String url, ExtendedEventHandler eventHandler)
+  private Optional<byte[]> grabFile(
+      String url, Optional<Checksum> checksum, ExtendedEventHandler eventHandler)
       throws IOException, InterruptedException {
     try (SilentCloseable c =
         Profiler.instance().profile(ProfilerTask.BZLMOD, () -> "download file: " + url)) {
       return Optional.of(
-          downloadManager.downloadAndReadOneUrl(new URL(url), eventHandler, clientEnv));
+          downloadManager.downloadAndReadOneUrl(new URL(url), checksum, eventHandler, clientEnv));
     } catch (FileNotFoundException e) {
       return Optional.empty();
     }
@@ -107,10 +111,14 @@ public class IndexRegistry implements Registry {
   @Override
   public Optional<ModuleFile> getModuleFile(ModuleKey key, ExtendedEventHandler eventHandler)
       throws IOException, InterruptedException {
+    if (prefetchStarted.compareAndSet(false, true)) {
+      downloadManager.startBzlmodRegistryModuleFilePrefetch(uri, eventHandler, clientEnv);
+    }
     String url =
         constructUrl(
             uri.toString(), "modules", key.getName(), key.getVersion().toString(), "MODULE.bazel");
-    return grabFile(url, eventHandler).map(content -> ModuleFile.create(content, url));
+    Optional<Checksum> checksum = downloadManager.getChecksumFromRegistryFileHashes(new URL(url));
+    return grabFile(url, checksum, eventHandler).map(content -> ModuleFile.create(content, url));
   }
 
   /** Represents fields available in {@code bazel_registry.json} for the registry. */
@@ -156,7 +164,7 @@ public class IndexRegistry implements Registry {
    */
   private Optional<String> grabJsonFile(String url, ExtendedEventHandler eventHandler)
       throws IOException, InterruptedException {
-    Optional<byte[]> bytes = grabFile(url, eventHandler);
+    Optional<byte[]> bytes = grabFile(url, Optional.empty(), eventHandler);
     if (bytes.isEmpty()) {
       return Optional.empty();
     }

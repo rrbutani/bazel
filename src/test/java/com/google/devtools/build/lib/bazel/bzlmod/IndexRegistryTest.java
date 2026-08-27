@@ -21,6 +21,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertThrows;
 
 import com.google.common.base.Suppliers;
+import com.google.common.hash.Hashing;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.truth.Truth8;
@@ -30,17 +31,24 @@ import com.google.devtools.build.lib.authandtls.NetrcCredentials;
 import com.google.devtools.build.lib.authandtls.NetrcParser;
 import com.google.devtools.build.lib.bazel.repository.cache.RepositoryCache;
 import com.google.devtools.build.lib.bazel.repository.downloader.DownloadManager;
+import com.google.devtools.build.lib.bazel.repository.downloader.Downloader;
 import com.google.devtools.build.lib.bazel.repository.downloader.HttpDownloader;
 import com.google.devtools.build.lib.bazel.repository.downloader.UnrecoverableHttpException;
 import com.google.devtools.build.lib.cmdline.RepositoryName;
+import com.google.devtools.build.lib.events.ExtendedEventHandler;
 import com.google.devtools.build.lib.testutil.FoundationTestCase;
 import com.google.devtools.build.lib.vfs.Path;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
+import java.net.URL;
 import java.nio.file.Files;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -66,6 +74,79 @@ public class IndexRegistryTest extends FoundationTestCase {
     registryFactory =
         new RegistryFactoryImpl(
             workspaceRoot, downloadManager, Suppliers.ofInstance(ImmutableMap.of()));
+  }
+
+  @Test
+  public void testPrefetchDisabledKeepsDedicatedHttpPath() throws Exception {
+    server.serve("/myreg/modules/foo/1.0/MODULE.bazel", "lol");
+    server.start();
+    DownloadManager manager =
+        new DownloadManager(new RepositoryCache(), new FailingDownloader());
+    manager.setBzlmodRegistryModuleFilePrefetch(
+        false,
+        ImmutableMap.of(
+            server.getUrl() + "/myreg/modules/foo/1.0/MODULE.bazel",
+            Hashing.sha256().hashString("lol", UTF_8).toString()));
+    RegistryFactory factory =
+        new RegistryFactoryImpl(
+            scratch.dir("/ws2"), manager, Suppliers.ofInstance(ImmutableMap.of()));
+    Registry registry = factory.getRegistryWithUrl(server.getUrl() + "/myreg");
+
+    Truth8.assertThat(registry.getModuleFile(createModuleKey("foo", "1.0"), reporter))
+        .hasValue(
+            ModuleFile.create(
+                "lol".getBytes(UTF_8), server.getUrl() + "/myreg/modules/foo/1.0/MODULE.bazel"));
+  }
+
+  @Test
+  public void testPrefetchEnabledUsesGeneralDownloaderAndDedupes() throws Exception {
+    byte[] content = "prefetched".getBytes(UTF_8);
+    CountingDownloader downloader = new CountingDownloader(content);
+    DownloadManager manager = new DownloadManager(new RepositoryCache(), downloader);
+    String moduleUrl = "https://example.test/registry/modules/foo/1.0/MODULE.bazel";
+    manager.setBzlmodRegistryModuleFilePrefetch(
+        true,
+        ImmutableMap.of(moduleUrl, Hashing.sha256().hashBytes(content).toString()));
+    RegistryFactory factory =
+        new RegistryFactoryImpl(
+            scratch.dir("/ws3"), manager, Suppliers.ofInstance(ImmutableMap.of()));
+    Registry registry = factory.getRegistryWithUrl("https://example.test/registry");
+
+    var pool = Executors.newFixedThreadPool(2);
+    try {
+      Future<Optional<ModuleFile>> first =
+          pool.submit(() -> registry.getModuleFile(createModuleKey("foo", "1.0"), reporter));
+      Future<Optional<ModuleFile>> second =
+          pool.submit(() -> registry.getModuleFile(createModuleKey("foo", "1.0"), reporter));
+      Truth8.assertThat(first.get()).hasValue(ModuleFile.create(content, moduleUrl));
+      Truth8.assertThat(second.get()).hasValue(ModuleFile.create(content, moduleUrl));
+    } finally {
+      pool.shutdownNow();
+    }
+    assertThat(downloader.downloadAndReadCalls).isEqualTo(1);
+  }
+
+  @Test
+  public void testPrefetchSkipsNonModuleUrls() throws Exception {
+    server.serve("/myreg/modules/foo/1.0/MODULE.bazel", "lol");
+    server.start();
+    CountingDownloader downloader = new CountingDownloader("unused".getBytes(UTF_8));
+    DownloadManager manager = new DownloadManager(new RepositoryCache(), downloader);
+    manager.setBzlmodRegistryModuleFilePrefetch(
+        true,
+        ImmutableMap.of(
+            server.getUrl() + "/myreg/modules/foo/1.0/source.json",
+            Hashing.sha256().hashString("{}", UTF_8).toString()));
+    RegistryFactory factory =
+        new RegistryFactoryImpl(
+            scratch.dir("/ws4"), manager, Suppliers.ofInstance(ImmutableMap.of()));
+    Registry registry = factory.getRegistryWithUrl(server.getUrl() + "/myreg");
+
+    Truth8.assertThat(registry.getModuleFile(createModuleKey("foo", "1.0"), reporter))
+        .hasValue(
+            ModuleFile.create(
+                "lol".getBytes(UTF_8), server.getUrl() + "/myreg/modules/foo/1.0/MODULE.bazel"));
+    assertThat(downloader.downloadAndReadCalls).isEqualTo(0);
   }
 
   @Test
@@ -327,5 +408,57 @@ public class IndexRegistryTest extends FoundationTestCase {
                 .setRemotePatches(ImmutableMap.of())
                 .setRemotePatchStrip(0)
                 .build());
+  }
+
+  private static class CountingDownloader implements Downloader {
+    private final byte[] content;
+    private int downloadAndReadCalls;
+
+    private CountingDownloader(byte[] content) {
+      this.content = content;
+    }
+
+    @Override
+    public void download(
+        List<URL> urls,
+        Map<String, List<String>> headers,
+        com.google.auth.Credentials credentials,
+        Optional<com.google.devtools.build.lib.bazel.repository.downloader.Checksum> checksum,
+        String canonicalId,
+        Path output,
+        ExtendedEventHandler eventHandler,
+        Map<String, String> clientEnv,
+        Optional<String> type)
+        throws IOException {}
+
+    @Override
+    public byte[] downloadAndReadOneUrl(
+        URL url,
+        com.google.auth.Credentials credentials,
+        Optional<com.google.devtools.build.lib.bazel.repository.downloader.Checksum> checksum,
+        String canonicalId,
+        ExtendedEventHandler eventHandler,
+        Map<String, String> clientEnv) {
+      downloadAndReadCalls++;
+      return content;
+    }
+  }
+
+  private static final class FailingDownloader extends CountingDownloader {
+    private FailingDownloader() {
+      super(new byte[0]);
+    }
+
+    @Override
+    public byte[] downloadAndReadOneUrl(
+        URL url,
+        com.google.auth.Credentials credentials,
+        Optional<com.google.devtools.build.lib.bazel.repository.downloader.Checksum> checksum,
+        String canonicalId,
+        ExtendedEventHandler eventHandler,
+        Map<String, String> clientEnv)
+        throws IOException {
+      throw new IOException("should not be called");
+    }
   }
 }

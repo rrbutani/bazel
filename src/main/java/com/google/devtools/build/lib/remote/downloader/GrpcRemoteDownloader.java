@@ -42,6 +42,7 @@ import io.grpc.Channel;
 import io.grpc.StatusRuntimeException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -167,6 +168,56 @@ public class GrpcRemoteDownloader implements AutoCloseable, Downloader {
     }
   }
 
+  @Override
+  public byte[] downloadAndReadOneUrl(
+      URL url,
+      Credentials credentials,
+      Optional<Checksum> checksum,
+      String canonicalId,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv)
+      throws IOException, InterruptedException {
+    RequestMetadata metadata =
+        TracingMetadataUtils.buildMetadata(buildRequestId, commandId, "remote_downloader", null);
+    RemoteActionExecutionContext remoteActionExecutionContext =
+        RemoteActionExecutionContext.create(metadata);
+
+    final FetchBlobRequest request =
+        newFetchBlobRequest(options.remoteInstanceName, List.of(url), checksum, canonicalId);
+    try {
+      FetchBlobResponse response =
+          retrier.execute(
+              () ->
+                  channel.withChannelBlocking(
+                      channel ->
+                          fetchBlockingStub(remoteActionExecutionContext, channel)
+                              .fetchBlob(request)));
+      final Digest blobDigest = response.getBlobDigest();
+
+      return retrier.execute(
+          () -> {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (OutputStream destination = maybeWrapWithChecksum(out, checksum)) {
+              Utils.getFromFuture(
+                  cacheClient.downloadBlob(remoteActionExecutionContext, blobDigest, destination));
+            }
+            return out.toByteArray();
+          });
+
+    } catch (StatusRuntimeException | IOException e) {
+      if (fallbackDownloader == null) {
+        if (e instanceof StatusRuntimeException) {
+          throw new IOException(e);
+        }
+        throw e;
+      }
+      eventHandler.handle(
+          Event.warn("Remote Cache: " + Utils.grpcAwareErrorMessage(e, verboseFailures)));
+      return fallbackDownloader.downloadAndReadOneUrl(
+          url, credentials, checksum, canonicalId, eventHandler, clientEnv);
+    }
+  }
+
   @VisibleForTesting
   static FetchBlobRequest newFetchBlobRequest(
       String instanceName, List<URL> urls, Optional<Checksum> checksum, String canonicalId) {
@@ -203,6 +254,10 @@ public class GrpcRemoteDownloader implements AutoCloseable, Downloader {
   private OutputStream newOutputStream(Path destination, Optional<Checksum> checksum)
       throws IOException {
     OutputStream out = destination.getOutputStream();
+    return maybeWrapWithChecksum(out, checksum);
+  }
+
+  private OutputStream maybeWrapWithChecksum(OutputStream out, Optional<Checksum> checksum) {
     if (checksum.isPresent()) {
       out = new HashOutputStream(out, checksum.get());
     }

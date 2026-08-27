@@ -15,6 +15,8 @@
 
 package com.google.devtools.build.lib.bazel;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -23,6 +25,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.devtools.build.lib.analysis.BlazeDirectories;
 import com.google.devtools.build.lib.analysis.ConfiguredRuleClassProvider;
 import com.google.devtools.build.lib.analysis.RuleDefinition;
@@ -77,6 +82,7 @@ import com.google.devtools.build.lib.bazel.rules.android.AndroidNdkRepositoryRul
 import com.google.devtools.build.lib.bazel.rules.android.AndroidSdkRepositoryFunction;
 import com.google.devtools.build.lib.bazel.rules.android.AndroidSdkRepositoryRule;
 import com.google.devtools.build.lib.cmdline.RepositoryName;
+import com.google.devtools.build.lib.cmdline.LabelConstants;
 import com.google.devtools.build.lib.events.Event;
 import com.google.devtools.build.lib.pkgcache.PackageOptions;
 import com.google.devtools.build.lib.rules.repository.LocalRepositoryFunction;
@@ -109,6 +115,7 @@ import com.google.devtools.build.lib.starlarkbuildapi.repository.RepositoryBoots
 import com.google.devtools.build.lib.util.AbruptExitException;
 import com.google.devtools.build.lib.util.DetailedExitCode;
 import com.google.devtools.build.lib.vfs.FileSystem;
+import com.google.devtools.build.lib.vfs.FileSystemUtils;
 import com.google.devtools.build.lib.vfs.Path;
 import com.google.devtools.build.lib.vfs.PathFragment;
 import com.google.devtools.build.lib.vfs.Root;
@@ -489,6 +496,10 @@ public class BazelRepositoryModule extends BlazeModule {
         downloadManager.setDistdir(ImmutableList.of());
       }
 
+      downloadManager.setBzlmodRegistryModuleFilePrefetch(
+          repoOptions.experimentalPrefetchRegistryModuleFiles,
+          readRegistryFileHashesFromLockfile(env));
+
       if (repoOptions.httpTimeoutScaling > 0) {
         httpDownloader.setTimeoutScaling((float) repoOptions.httpTimeoutScaling);
       } else {
@@ -593,6 +604,42 @@ public class BazelRepositoryModule extends BlazeModule {
       path = env.getWorkingDirectory().getRelative(path).getPathString();
     }
     return path;
+  }
+
+  @Override
+  public void afterCommand() {
+    downloadManager.clearBzlmodRegistryModuleFilePrefetch();
+  }
+
+  private static ImmutableMap<String, String> readRegistryFileHashesFromLockfile(
+      CommandEnvironment env) {
+    if (env.getWorkspace() == null) {
+      return ImmutableMap.of();
+    }
+    Path lockfilePath = env.getWorkspace().getRelative(LabelConstants.MODULE_LOCKFILE_NAME);
+    if (!lockfilePath.exists()) {
+      return ImmutableMap.of();
+    }
+    try {
+      JsonObject lockfileJson =
+          JsonParser.parseString(FileSystemUtils.readContent(lockfilePath, UTF_8))
+              .getAsJsonObject();
+      JsonElement hashesElement = lockfileJson.get("registryFileHashes");
+      if (hashesElement == null || !hashesElement.isJsonObject()) {
+        return ImmutableMap.of();
+      }
+      ImmutableMap.Builder<String, String> hashes = ImmutableMap.builder();
+      for (Map.Entry<String, JsonElement> entry : hashesElement.getAsJsonObject().entrySet()) {
+        if (entry.getValue().isJsonPrimitive()
+            && entry.getValue().getAsJsonPrimitive().isString()) {
+          hashes.put(entry.getKey(), entry.getValue().getAsString());
+        }
+      }
+      return hashes.buildOrThrow();
+    } catch (IOException | IllegalStateException e) {
+      env.getReporter().handle(Event.warn("Failed to read registryFileHashes from lockfile: " + e));
+      return ImmutableMap.of();
+    }
   }
 
   @Override

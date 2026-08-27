@@ -328,6 +328,17 @@ public class RepositoryOptions extends OptionsBase {
               + "workspace directory.")
   public PathFragment vendorDirectory;
 
+  @Option(
+      name = "experimental_prefetch_registry_module_files",
+      defaultValue = "false",
+      documentationCategory = OptionDocumentationCategory.BZLMOD,
+      effectTags = {OptionEffectTag.LOADING_AND_ANALYSIS},
+      metadataTags = {OptionMetadataTag.EXPERIMENTAL},
+      help =
+          "If set, Bazel may speculatively prefetch checksummed registry MODULE.bazel files listed"
+              + " in MODULE.bazel.lock using the configured downloader.")
+  public boolean experimentalPrefetchRegistryModuleFiles;
+
   /** An enum for specifying different modes for checking direct dependency accuracy. */
   public enum CheckDirectDepsMode {
     OFF, // Don't check direct dependency accuracy.

@@ -33,6 +33,7 @@ import com.google.devtools.build.lib.bazel.repository.downloader.UrlRewriter.Rew
 import com.google.devtools.build.lib.events.Event;
 import com.google.devtools.build.lib.events.ExtendedEventHandler;
 import com.google.devtools.build.lib.profiler.Profiler;
+import com.google.devtools.build.lib.profiler.ProfilerTask;
 import com.google.devtools.build.lib.profiler.SilentCloseable;
 import com.google.devtools.build.lib.vfs.FileSystemUtils;
 import com.google.devtools.build.lib.vfs.Path;
@@ -42,14 +43,19 @@ import java.io.InterruptedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 /**
@@ -78,6 +84,7 @@ public class DownloadManager {
   private int retries = 0;
   @Nullable private Credentials netrcCreds;
   private CredentialFactory credentialFactory = StaticCredentials::new;
+  @Nullable private volatile RegistryFilePrefetcher registryFilePrefetcher;
 
   /** Creates {@code Credentials} from a map of per-{@code URI} authentication headers. */
   public interface CredentialFactory {
@@ -112,6 +119,42 @@ public class DownloadManager {
 
   public void setCredentialFactory(CredentialFactory credentialFactory) {
     this.credentialFactory = credentialFactory;
+  }
+
+  public synchronized void setBzlmodRegistryModuleFilePrefetch(
+      boolean enabled, ImmutableMap<String, String> registryFileHashes) {
+    if (registryFilePrefetcher != null) {
+      registryFilePrefetcher.close();
+      registryFilePrefetcher = null;
+    }
+    if (!enabled || registryFileHashes.isEmpty()) {
+      return;
+    }
+    registryFilePrefetcher =
+        new RegistryFilePrefetcher(parseRegistryFileChecksums(registryFileHashes));
+  }
+
+  public synchronized void clearBzlmodRegistryModuleFilePrefetch() {
+    if (registryFilePrefetcher != null) {
+      registryFilePrefetcher.close();
+      registryFilePrefetcher = null;
+    }
+  }
+
+  public void startBzlmodRegistryModuleFilePrefetch(
+      URI registryUri, ExtendedEventHandler eventHandler, Map<String, String> clientEnv) {
+    RegistryFilePrefetcher prefetcher = registryFilePrefetcher;
+    if (prefetcher != null) {
+      prefetcher.startForRegistry(registryUri, eventHandler, clientEnv);
+    }
+  }
+
+  public Optional<Checksum> getChecksumFromRegistryFileHashes(URL url) {
+    RegistryFilePrefetcher prefetcher = registryFilePrefetcher;
+    if (prefetcher == null) {
+      return Optional.empty();
+    }
+    return prefetcher.getChecksumForUrl(url);
   }
 
   public Future<Path> startDownload(
@@ -389,6 +432,29 @@ public class DownloadManager {
   public byte[] downloadAndReadOneUrl(
       URL originalUrl, ExtendedEventHandler eventHandler, Map<String, String> clientEnv)
       throws IOException, InterruptedException {
+    return downloadAndReadOneUrl(originalUrl, Optional.empty(), eventHandler, clientEnv);
+  }
+
+  public byte[] downloadAndReadOneUrl(
+      URL originalUrl,
+      Optional<Checksum> checksum,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv)
+      throws IOException, InterruptedException {
+    RegistryFilePrefetcher prefetcher = registryFilePrefetcher;
+    if (prefetcher != null && checksum.isPresent()) {
+      return downloadAndReadOneUrlWithPrefetch(
+          originalUrl, checksum.get(), prefetcher, eventHandler, clientEnv);
+    }
+    return downloadAndReadOneUrlDirectHttp(originalUrl, checksum, eventHandler, clientEnv);
+  }
+
+  private byte[] downloadAndReadOneUrlDirectHttp(
+      URL originalUrl,
+      Optional<Checksum> checksum,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv)
+      throws IOException, InterruptedException {
     if (Thread.interrupted()) {
       throw new InterruptedException();
     }
@@ -426,7 +492,11 @@ public class DownloadManager {
     for (int attempt = 0; attempt <= retries; ++attempt) {
       try {
         return httpDownloader.downloadAndReadOneUrl(
-            rewrittenUrls.get(0), credentialFactory.create(authHeaders), eventHandler, clientEnv);
+            rewrittenUrls.get(0),
+            credentialFactory.create(authHeaders),
+            checksum,
+            eventHandler,
+            clientEnv);
       } catch (ContentLengthMismatchException e) {
         if (attempt == retries) {
           throw e;
@@ -437,6 +507,314 @@ public class DownloadManager {
     }
 
     throw new IllegalStateException("Unexpected error: file should have been downloaded.");
+  }
+
+  private byte[] downloadAndReadOneUrlWithPrefetch(
+      URL originalUrl,
+      Checksum checksum,
+      RegistryFilePrefetcher prefetcher,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv)
+      throws IOException, InterruptedException {
+    Optional<byte[]> cached = readFromRepositoryCache(checksum);
+    if (cached.isPresent()) {
+      return cached.get();
+    }
+
+    Optional<byte[]> prefetched =
+        prefetcher.consumeOrSchedule(originalUrl, checksum, eventHandler, clientEnv);
+    if (prefetched.isPresent()) {
+      maybeWriteToRepositoryCache(checksum, prefetched.get(), eventHandler);
+      return prefetched.get();
+    }
+
+    byte[] downloaded =
+        downloadAndReadOneUrlDirectHttp(
+            originalUrl, Optional.of(checksum), eventHandler, clientEnv);
+    maybeWriteToRepositoryCache(checksum, downloaded, eventHandler);
+    return downloaded;
+  }
+
+  private Optional<byte[]> readFromRepositoryCache(Checksum checksum) {
+    if (!repositoryCache.isEnabled()) {
+      return Optional.empty();
+    }
+    Path contentAddressablePath = repositoryCache.getContentAddressableCachePath();
+    if (contentAddressablePath == null) {
+      return Optional.empty();
+    }
+    Path cacheValuePath =
+        checksum
+            .getKeyType()
+            .getCachePath(contentAddressablePath)
+            .getChild(checksum.toString())
+            .getChild(RepositoryCache.DEFAULT_CACHE_FILENAME);
+    if (!cacheValuePath.exists()) {
+      return Optional.empty();
+    }
+    try {
+      if (!RepositoryCache.getChecksum(checksum.getKeyType(), cacheValuePath)
+          .equals(checksum.toString())) {
+        return Optional.empty();
+      }
+      return Optional.of(
+          FileSystemUtils.readWithKnownFileSize(cacheValuePath, cacheValuePath.getFileSize()));
+    } catch (IOException e) {
+      return Optional.empty();
+    }
+  }
+
+  private void maybeWriteToRepositoryCache(
+      Checksum checksum, byte[] content, ExtendedEventHandler eventHandler)
+      throws InterruptedException {
+    if (!repositoryCache.isEnabled()) {
+      return;
+    }
+    Path root = repositoryCache.getRootPath();
+    if (root == null) {
+      return;
+    }
+    Path tempPath =
+        root.getRelative("tmp")
+            .getRelative("bzlmod-prefetch-" + Thread.currentThread().getId());
+    try {
+      tempPath.getParentDirectory().createDirectoryAndParents();
+      FileSystemUtils.writeContent(tempPath, content);
+      repositoryCache.put(checksum.toString(), tempPath, checksum.getKeyType(), "");
+    } catch (IOException e) {
+      eventHandler.handle(
+          Event.warn("Failed to write bzlmod prefetch result to repository cache: " + e));
+    } finally {
+      try {
+        tempPath.delete();
+      } catch (IOException e) {
+        // Best effort cleanup.
+      }
+    }
+  }
+
+  private byte[] downloadAndReadOneUrlWithDownloader(
+      URL originalUrl,
+      Optional<Checksum> checksum,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv)
+      throws IOException, InterruptedException {
+    if (Thread.interrupted()) {
+      throw new InterruptedException();
+    }
+    Map<URI, Map<String, List<String>>> authHeaders = ImmutableMap.of();
+    ImmutableList<URL> rewrittenUrls = ImmutableList.of(originalUrl);
+
+    if (netrcCreds != null) {
+      try {
+        Map<String, List<String>> metadata = netrcCreds.getRequestMetadata(originalUrl.toURI());
+        if (!metadata.isEmpty()) {
+          Entry<String, List<String>> headers = metadata.entrySet().iterator().next();
+          authHeaders =
+              ImmutableMap.of(
+                  originalUrl.toURI(),
+                  ImmutableMap.of(headers.getKey(), ImmutableList.of(headers.getValue().get(0))));
+        }
+      } catch (URISyntaxException e) {
+        // If the credentials extraction failed, we're letting bazel try without credentials.
+      }
+    }
+
+    if (rewriter != null) {
+      ImmutableList<UrlRewriter.RewrittenURL> rewrittenUrlMappings =
+          rewriter.amend(ImmutableList.of(originalUrl));
+      rewrittenUrls =
+          rewrittenUrlMappings.stream().map(RewrittenURL::url).collect(toImmutableList());
+      authHeaders = rewriter.updateAuthHeaders(rewrittenUrlMappings, authHeaders, netrcCreds);
+    }
+
+    if (rewrittenUrls.isEmpty()) {
+      throw new IOException(getRewriterBlockedAllUrlsMessage(ImmutableList.of(originalUrl)));
+    }
+
+    for (int attempt = 0; attempt <= retries; ++attempt) {
+      try {
+        return downloader.downloadAndReadOneUrl(
+            rewrittenUrls.get(0),
+            credentialFactory.create(authHeaders),
+            checksum,
+            "",
+            eventHandler,
+            clientEnv);
+      } catch (ContentLengthMismatchException e) {
+        if (attempt == retries) {
+          throw e;
+        }
+      } catch (InterruptedIOException e) {
+        throw new InterruptedException(e.getMessage());
+      }
+    }
+
+    throw new IllegalStateException("Unexpected error: file should have been downloaded.");
+  }
+
+  private static ImmutableMap<String, Checksum> parseRegistryFileChecksums(
+      ImmutableMap<String, String> registryFileHashes) {
+    HashMap<String, Checksum> checksums = new HashMap<>();
+    for (Entry<String, String> entry : registryFileHashes.entrySet()) {
+      Optional<Checksum> checksum = parseChecksum(entry.getValue());
+      if (checksum.isPresent()) {
+        checksums.put(entry.getKey(), checksum.get());
+      }
+    }
+    return ImmutableMap.copyOf(checksums);
+  }
+
+  private static Optional<Checksum> parseChecksum(String rawChecksum) {
+    if (Strings.isNullOrEmpty(rawChecksum)) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(Checksum.fromSubresourceIntegrity(rawChecksum));
+    } catch (Checksum.InvalidChecksumException e) {
+      // Fallback to plain SHA256.
+    }
+    try {
+      return Optional.of(Checksum.fromString(KeyType.SHA256, rawChecksum));
+    } catch (Checksum.InvalidChecksumException e) {
+      return Optional.empty();
+    }
+  }
+
+  private final class RegistryFilePrefetcher {
+    private static final int PREFETCH_THREADS = 8;
+
+    private final ImmutableMap<String, Checksum> checksumsByUrl;
+    private final ExecutorService executor;
+    private final ConcurrentMap<PrefetchKey, Future<byte[]>> futures = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Boolean> startedRegistries = new ConcurrentHashMap<>();
+
+    RegistryFilePrefetcher(ImmutableMap<String, Checksum> checksumsByUrl) {
+      this.checksumsByUrl = checksumsByUrl;
+      this.executor =
+          Executors.newFixedThreadPool(
+              PREFETCH_THREADS,
+              new ThreadFactoryBuilder().setNameFormat("registry-file-prefetch-%d").build());
+    }
+
+    Optional<Checksum> getChecksumForUrl(URL url) {
+      Checksum checksum = checksumsByUrl.get(url.toString());
+      if (checksum == null) {
+        return Optional.empty();
+      }
+      return Optional.of(checksum);
+    }
+
+    void startForRegistry(
+        URI registryUri, ExtendedEventHandler eventHandler, Map<String, String> clientEnv) {
+      String registry = normalizeRegistry(registryUri.toString());
+      if (startedRegistries.putIfAbsent(registry, true) != null) {
+        return;
+      }
+      for (Entry<String, Checksum> entry : checksumsByUrl.entrySet()) {
+        URL url = toUrl(entry.getKey());
+        if (url == null || !isEligibleRegistryModuleFileUrl(url)) {
+          continue;
+        }
+        if (!normalizeRegistry(url.toString()).startsWith(registry)) {
+          continue;
+        }
+        ensureFuture(url, entry.getValue(), eventHandler, clientEnv);
+      }
+    }
+
+    Optional<byte[]> consumeOrSchedule(
+        URL url,
+        Checksum checksum,
+        ExtendedEventHandler eventHandler,
+        Map<String, String> clientEnv)
+        throws InterruptedException {
+      Future<byte[]> future = ensureFuture(url, checksum, eventHandler, clientEnv);
+      try (SilentCloseable c =
+          Profiler.instance().profile(ProfilerTask.BZLMOD, () -> "wait prefetch: " + url)) {
+        return Optional.of(future.get());
+      } catch (CancellationException e) {
+        throw new InterruptedException(e.getMessage());
+      } catch (ExecutionException e) {
+        Throwable cause = e.getCause();
+        if (cause instanceof InterruptedException) {
+          throw (InterruptedException) cause;
+        }
+        return Optional.empty();
+      }
+    }
+
+    private Future<byte[]> ensureFuture(
+        URL url,
+        Checksum checksum,
+        ExtendedEventHandler eventHandler,
+        Map<String, String> clientEnv) {
+      PrefetchKey key = new PrefetchKey(url.toString(), checksum.toString());
+      return futures.computeIfAbsent(
+          key,
+          unused ->
+              executor.submit(
+                  () ->
+                      downloadAndReadOneUrlWithDownloader(
+                          url, Optional.of(checksum), eventHandler, clientEnv)));
+    }
+
+    void close() {
+      for (Future<byte[]> future : futures.values()) {
+        future.cancel(true);
+      }
+      executor.shutdownNow();
+      try {
+        executor.awaitTermination(5, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private static final class PrefetchKey {
+    private final String url;
+    private final String checksum;
+
+    private PrefetchKey(String url, String checksum) {
+      this.url = url;
+      this.checksum = checksum;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      if (!(other instanceof PrefetchKey)) {
+        return false;
+      }
+      PrefetchKey that = (PrefetchKey) other;
+      return this.url.equals(that.url) && this.checksum.equals(that.checksum);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * url.hashCode() + checksum.hashCode();
+    }
+  }
+
+  private static String normalizeRegistry(String url) {
+    return url.endsWith("/") ? url : url + "/";
+  }
+
+  private static boolean isEligibleRegistryModuleFileUrl(URL url) {
+    String protocol = url.getProtocol();
+    if (!protocol.equals("http") && !protocol.equals("https")) {
+      return false;
+    }
+    return url.getPath().endsWith("/MODULE.bazel");
+  }
+
+  @Nullable
+  private static URL toUrl(String urlString) {
+    try {
+      return new URL(urlString);
+    } catch (IOException e) {
+      return null;
+    }
   }
 
   @Nullable

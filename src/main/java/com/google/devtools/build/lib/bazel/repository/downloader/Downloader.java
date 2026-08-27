@@ -51,4 +51,22 @@ public interface Downloader {
       Map<String, String> clientEnv,
       Optional<String> type)
       throws IOException, InterruptedException;
+
+  /**
+   * Downloads one URL and returns the bytes in memory.
+   *
+   * <p>Default implementation is unsupported.
+   */
+  default byte[] downloadAndReadOneUrl(
+      URL url,
+      Credentials credentials,
+      Optional<Checksum> checksum,
+      String canonicalId,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv)
+      throws IOException, InterruptedException {
+    throw new UnsupportedOperationException(
+        String.format(
+            "%s does not support downloadAndReadOneUrl", this.getClass().getSimpleName()));
+  }
 }
