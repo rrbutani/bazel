@@ -4,11 +4,11 @@
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.google.devtools.build.lib.unix.NativePosixFiles$Dirent",
+    "name": "com.google.devtools.build.lib.unix.NativePosixFilesService$Dirent",
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.google.devtools.build.lib.unix.NativePosixFiles$Dirent$Type",
+    "name": "com.google.devtools.build.lib.unix.NativePosixFilesService$Dirent$Type",
     "allDeclaredConstructors": true,
     "allDeclaredFields": true
   },
@@ -17,8 +17,26 @@
     "allDeclaredConstructors": true
   },
   {
+    "name": "com.google.devtools.build.lib.unix.NativePosixFilesServiceImpl$StatImpl",
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "com.google.devtools.build.lib.unix.NativePosixFilesServiceImpl$DirentImpl",
+    "allDeclaredConstructors": true
+  },
+  {
     "name": "com.google.devtools.build.lib.unix.NativePosixFiles",
     "allDeclaredMethods": true
+  },
+  {
+    "name": "com.google.devtools.build.lib.unix.NativePosixFilesException",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.google.devtools.build.lib.unix.NativePosixFilesException$PosixError",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true
   },
   {
     "name": "com.google.devtools.build.lib.unix.ProcessUtils",
