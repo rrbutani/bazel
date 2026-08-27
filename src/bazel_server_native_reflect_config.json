@@ -176,6 +176,10 @@
     "allDeclaredConstructors": true
   },
   {
+    "name": "com.google.devtools.build.lib.starlarkprofiler.CpuProfilerModule",
+    "allDeclaredConstructors": true
+  },
+  {
     "name": "com.google.devtools.build.lib.vfs.bazel.Blake3MessageDigest",
     "allDeclaredConstructors": true
   },
