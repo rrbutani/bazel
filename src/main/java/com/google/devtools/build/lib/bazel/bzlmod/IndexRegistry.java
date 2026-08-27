@@ -247,6 +247,7 @@ public class IndexRegistry implements Registry {
   public ModuleFile getModuleFile(
       ModuleKey key, ExtendedEventHandler eventHandler, DownloadManager downloadManager)
       throws IOException, InterruptedException, NotFoundException {
+    downloadManager.prefetchRegistryModuleFiles(uri, clientEnv, knownFileHashes);
     String url = constructModuleFileUrl(key);
     byte[] content = grabFile(url, eventHandler, downloadManager, /* useChecksum= */ true);
     return ModuleFile.create(content, url);
