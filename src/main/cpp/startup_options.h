@@ -94,6 +94,11 @@ class StartupOptions {
                                     const std::string &jar_path,
                                     std::vector<std::string> *result) const;
 
+  void AddKeystoreArguments(
+    std::vector<std::string>* result,
+    const std::vector<std::string>& user_options
+  ) const;
+
   // Adds JVM tuning flags for Blaze.
   //
   // Returns the exit code after this operation. "error" will be set to a
