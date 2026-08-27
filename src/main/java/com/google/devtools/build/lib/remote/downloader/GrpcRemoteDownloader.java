@@ -43,7 +43,6 @@ import com.google.devtools.build.lib.remote.options.RemoteOptions;
 import com.google.devtools.build.lib.remote.util.TracingMetadataUtils;
 import com.google.devtools.build.lib.remote.util.Utils;
 import com.google.devtools.build.lib.vfs.Path;
-import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.protobuf.util.Timestamps;
 import com.google.rpc.Code;
 import io.grpc.CallCredentials;
@@ -178,6 +177,9 @@ public class GrpcRemoteDownloader implements AutoCloseable, Downloader {
             return null;
           });
     } catch (StatusRuntimeException | IOException e) {
+      if (e instanceof OutputDigestMismatchException mismatchException) {
+        mismatchException.setOutputPath(destination.getPathString());
+      }
       if (!remoteDownloaderLocalFallback) {
         if (e instanceof StatusRuntimeException) {
           throw new IOException(e);
@@ -231,7 +233,6 @@ public class GrpcRemoteDownloader implements AutoCloseable, Downloader {
     }
   }
 
-  @CanIgnoreReturnValue
   private <T> T fetchBlob(
       List<URI> urls,
       Map<String, List<String>> headers,

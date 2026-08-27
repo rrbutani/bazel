@@ -233,7 +233,9 @@ public class IndexRegistry implements Registry {
 
     try (SilentCloseable c =
         Profiler.instance().profile(ProfilerTask.BZLMOD, () -> "download file: " + rawUrl)) {
-      return downloadManager.downloadAndReadOneUrlForBzlmod(url, clientEnv, checksum);
+      return rawUrl.endsWith("/MODULE.bazel")
+          ? downloadManager.downloadAndReadRegistryModuleFile(url, clientEnv, checksum)
+          : downloadManager.downloadAndReadOneUrlForBzlmod(url, clientEnv, checksum);
     } catch (FileNotFoundException e) {
       throw new NotFoundException(String.format("%s: not found", rawUrl));
     } catch (IOException e) {
