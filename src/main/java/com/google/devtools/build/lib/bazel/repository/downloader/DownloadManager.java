@@ -27,6 +27,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.devtools.build.lib.authandtls.StaticCredentials;
 import com.google.devtools.build.lib.bazel.repository.cache.DownloadCache;
 import com.google.devtools.build.lib.bazel.repository.cache.DownloadCache.KeyType;
@@ -36,6 +40,7 @@ import com.google.devtools.build.lib.bazel.repository.downloader.UrlRewriter.Rew
 import com.google.devtools.build.lib.events.Event;
 import com.google.devtools.build.lib.events.ExtendedEventHandler;
 import com.google.devtools.build.lib.profiler.Profiler;
+import com.google.devtools.build.lib.profiler.ProfilerTask;
 import com.google.devtools.build.lib.profiler.SilentCloseable;
 import com.google.devtools.build.lib.vfs.FileSystemUtils;
 import com.google.devtools.build.lib.vfs.Path;
@@ -50,10 +55,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import javax.annotation.Nullable;
 
 /**
@@ -62,13 +72,20 @@ import javax.annotation.Nullable;
  * <p>This class uses a {@link Downloader} to download files from external mirrors and writes them
  * to disk.
  */
-public class DownloadManager {
+public class DownloadManager implements AutoCloseable {
+  private static final int REGISTRY_MODULE_FILE_PREFETCH_THREADS = 8;
+  private static final String BZLMOD_DOWNLOAD_CONTEXT = "Bazel module fetching";
+
   private final DownloadCache downloadCache;
   private ImmutableList<Path> distdir = ImmutableList.of();
   private UrlRewriter rewriter;
   private final Downloader downloader;
   private final HttpDownloader bzlmodHttpDownloader;
   private final ExtendedEventHandler eventHandler;
+  @Nullable private final ListeningExecutorService registryModuleFilePrefetchExecutor;
+  private final ConcurrentHashMap<RegistryModuleFilePrefetchKey, ListenableFuture<byte[]>>
+      registryModuleFilePrefetches = new ConcurrentHashMap<>();
+  private final Set<String> registryModuleFilePrefetchesStarted = ConcurrentHashMap.newKeySet();
   private boolean disableDownload = false;
   private int retries = 0;
   @Nullable private Credentials netrcCreds;
@@ -92,10 +109,29 @@ public class DownloadManager {
       Downloader downloader,
       HttpDownloader bzlmodHttpDownloader,
       ExtendedEventHandler eventHandler) {
+    this(downloadCache, downloader, bzlmodHttpDownloader, eventHandler, /* prefetchRegistryModuleFiles= */ false);
+  }
+
+  public DownloadManager(
+      DownloadCache downloadCache,
+      Downloader downloader,
+      HttpDownloader bzlmodHttpDownloader,
+      ExtendedEventHandler eventHandler,
+      boolean prefetchRegistryModuleFiles) {
     this.downloadCache = downloadCache;
     this.downloader = downloader;
     this.bzlmodHttpDownloader = bzlmodHttpDownloader;
     this.eventHandler = eventHandler;
+    this.registryModuleFilePrefetchExecutor =
+        prefetchRegistryModuleFiles
+            ? MoreExecutors.listeningDecorator(
+                Executors.newFixedThreadPool(
+                    REGISTRY_MODULE_FILE_PREFETCH_THREADS,
+                    new ThreadFactoryBuilder()
+                        .setDaemon(true)
+                        .setNameFormat("bzlmod-registry-prefetch-%d")
+                        .build()))
+            : null;
   }
 
   public void setDistdir(List<Path> distdir) {
@@ -121,6 +157,44 @@ public class DownloadManager {
 
   public void setCredentialFactory(CredentialFactory credentialFactory) {
     this.credentialFactory = credentialFactory;
+  }
+
+  public void prefetchRegistryModuleFiles(
+      URI registryUri,
+      Map<String, String> clientEnv,
+      Map<String, Optional<Checksum>> knownFileHashes) {
+    if (registryModuleFilePrefetchExecutor == null) {
+      return;
+    }
+    String scheme = registryUri.getScheme();
+    if (!"http".equals(scheme) && !"https".equals(scheme)) {
+      return;
+    }
+    String registryPrefix = stripTrailingSlash(registryUri.toString()) + "/";
+    if (!registryModuleFilePrefetchesStarted.add(registryPrefix)) {
+      return;
+    }
+    for (Entry<String, Optional<Checksum>> entry : knownFileHashes.entrySet()) {
+      if (entry.getValue().isEmpty()) {
+        continue;
+      }
+      String url = entry.getKey();
+      if (!isChecksummedRegistryModuleFileUrl(url, registryPrefix)) {
+        continue;
+      }
+      scheduleRegistryModuleFilePrefetch(URI.create(url), clientEnv, entry.getValue().get());
+    }
+  }
+
+  @Override
+  public void close() {
+    if (registryModuleFilePrefetchExecutor == null) {
+      return;
+    }
+    for (ListenableFuture<byte[]> future : registryModuleFilePrefetches.values()) {
+      future.cancel(true);
+    }
+    registryModuleFilePrefetchExecutor.shutdownNow();
   }
 
   public Future<Path> startDownload(
@@ -421,19 +495,110 @@ public class DownloadManager {
       throw new InterruptedException();
     }
 
-    if (downloadCache.isEnabled() && checksum.isPresent()) {
-      String cacheKey = checksum.get().toString();
-      try {
-        byte[] content = downloadCache.getBytes(cacheKey, checksum.get().getKeyType());
-        if (content != null) {
-          // Cache hit!
-          eventHandler.post(
-              new DownloadCacheHitEvent("Bazel module fetching", cacheKey, originalUrl));
+    Optional<byte[]> cacheHit = getBytesFromCache(originalUrl, checksum);
+    if (cacheHit.isPresent()) {
+      return cacheHit.get();
+    }
+    RegistryModuleFilePrefetchKey prefetchKey =
+        RegistryModuleFilePrefetchKey.create(originalUrl, checksum);
+    if (prefetchKey != null) {
+      ListenableFuture<byte[]> future = registryModuleFilePrefetches.get(prefetchKey);
+      if (future != null) {
+        long waitStartTime = Profiler.instance().nanoTimeMaybe();
+        try {
+          byte[] content = future.get();
+          Profiler.instance()
+              .logSimpleTask(
+                  waitStartTime,
+                  ProfilerTask.BZLMOD,
+                  "wait for prefetched registry module file: " + originalUrl);
           return content;
+        } catch (CancellationException e) {
+          registryModuleFilePrefetches.remove(prefetchKey, future);
+          throw new InterruptedException();
+        } catch (ExecutionException e) {
+          Profiler.instance()
+              .logSimpleTask(
+                  waitStartTime,
+                  ProfilerTask.BZLMOD,
+                  "wait for prefetched registry module file: " + originalUrl);
+          registryModuleFilePrefetches.remove(prefetchKey, future);
+          Throwable cause = e.getCause();
+          Throwables.throwIfInstanceOf(cause, InterruptedException.class);
+          if (cause instanceof InterruptedIOException interrupted) {
+            throw new InterruptedException(interrupted.getMessage());
+          }
+          Throwables.throwIfUnchecked(cause);
         }
-      } catch (IOException e) {
-        // Ignore error trying to get. We'll just download again.
       }
+    }
+    return downloadAndReadOneUrlForBzlmodDirect(
+        originalUrl, clientEnv, checksum, /* bestEffortCacheWrite= */ false);
+  }
+
+  private Optional<byte[]> getBytesFromCache(URI originalUrl, Optional<Checksum> checksum) {
+    if (!downloadCache.isEnabled() || checksum.isEmpty()) {
+      return Optional.empty();
+    }
+    String cacheKey = checksum.get().toString();
+    try {
+      byte[] content = downloadCache.getBytes(cacheKey, checksum.get().getKeyType());
+      if (content != null) {
+        eventHandler.post(new DownloadCacheHitEvent(BZLMOD_DOWNLOAD_CONTEXT, cacheKey, originalUrl));
+        return Optional.of(content);
+      }
+    } catch (IOException e) {
+      // Ignore error trying to get. We'll just download again.
+    }
+    return Optional.empty();
+  }
+
+  private void scheduleRegistryModuleFilePrefetch(
+      URI url, Map<String, String> clientEnv, Checksum checksum) {
+    RegistryModuleFilePrefetchKey key =
+        RegistryModuleFilePrefetchKey.create(url, Optional.of(checksum));
+    if (key == null || registryModuleFilePrefetchExecutor == null) {
+      return;
+    }
+    registryModuleFilePrefetches.computeIfAbsent(
+        key,
+        unused -> {
+          long startTime = Profiler.instance().nanoTimeMaybe();
+          try {
+            ListenableFuture<byte[]> future =
+                registryModuleFilePrefetchExecutor.submit(
+                    () -> {
+                      try (SilentCloseable c =
+                          Profiler.instance()
+                              .profile(
+                                  ProfilerTask.BZLMOD,
+                                  () -> "prefetch registry module file: " + url)) {
+                        return downloadAndReadOneUrlForBzlmodDirect(
+                            url,
+                            clientEnv,
+                            Optional.of(checksum),
+                            /* bestEffortCacheWrite= */ true);
+                      }
+                    });
+            Profiler.instance()
+                .logSimpleTask(
+                    startTime, ProfilerTask.BZLMOD, "schedule registry module prefetch: " + url);
+            return future;
+          } catch (RejectedExecutionException e) {
+            return null;
+          }
+        });
+  }
+
+  private byte[] downloadAndReadOneUrlForBzlmodDirect(
+      URI originalUrl,
+      Map<String, String> clientEnv,
+      Optional<Checksum> checksum,
+      boolean bestEffortCacheWrite)
+      throws IOException, InterruptedException {
+    Optional<byte[]> cacheHit = getBytesFromCache(originalUrl, checksum);
+    if (cacheHit.isPresent()) {
+      return cacheHit.get();
     }
 
     Map<URI, Map<String, List<String>>> authHeaders = ImmutableMap.of();
@@ -470,12 +635,15 @@ public class DownloadManager {
     for (int attempt = 0; ; ++attempt) {
       try {
         content =
-            bzlmodHttpDownloader.downloadAndRead(
+            downloader.downloadAndRead(
                 rewrittenUrls,
+                ImmutableMap.of(),
                 credentialFactory.create(authHeaders),
                 checksum,
+                "",
                 eventHandler,
-                clientEnv);
+                clientEnv,
+                BZLMOD_DOWNLOAD_CONTEXT);
         break;
       } catch (InterruptedIOException e) {
         throw new InterruptedException(e.getMessage());
@@ -490,13 +658,36 @@ public class DownloadManager {
     }
 
     if (downloadCache.isEnabled()) {
-      if (checksum.isPresent()) {
-        downloadCache.put(checksum.get().toString(), content, checksum.get().getKeyType());
-      } else {
-        downloadCache.put(content, KeyType.SHA256);
+      try {
+        if (checksum.isPresent()) {
+          downloadCache.put(checksum.get().toString(), content, checksum.get().getKeyType());
+        } else {
+          downloadCache.put(content, KeyType.SHA256);
+        }
+      } catch (IOException e) {
+        if (!bestEffortCacheWrite) {
+          throw e;
+        }
       }
     }
     return content;
+  }
+
+  private static boolean isChecksummedRegistryModuleFileUrl(String url, String registryPrefix) {
+    return url.startsWith(registryPrefix)
+        && url.endsWith("/MODULE.bazel")
+        && (url.startsWith("http://") || url.startsWith("https://"));
+  }
+
+  private static String stripTrailingSlash(String value) {
+    return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+  }
+
+  private record RegistryModuleFilePrefetchKey(URI url, Checksum checksum) {
+    @Nullable
+    static RegistryModuleFilePrefetchKey create(URI url, Optional<Checksum> checksum) {
+      return checksum.map(value -> new RegistryModuleFilePrefetchKey(url, value)).orElse(null);
+    }
   }
 
   @Nullable

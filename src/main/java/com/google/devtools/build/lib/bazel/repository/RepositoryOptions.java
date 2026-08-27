@@ -203,6 +203,18 @@ public abstract class RepositoryOptions extends OptionsBase {
   public abstract List<PathFragment> getExperimentalDistdir();
 
   @Option(
+      name = "experimental_prefetch_registry_module_files",
+      defaultValue = "false",
+      documentationCategory = OptionDocumentationCategory.BZLMOD,
+      effectTags = {OptionEffectTag.LOADING_AND_ANALYSIS},
+      metadataTags = {OptionMetadataTag.EXPERIMENTAL},
+      help =
+          "If set, Bazel may speculatively prefetch checksummed HTTP(S) registry MODULE.bazel"
+              + " files from MODULE.bazel.lock via the general downloader during module"
+              + " resolution.")
+  public abstract boolean getExperimentalPrefetchRegistryModuleFiles();
+
+  @Option(
       name = "override_repository",
       defaultValue = "null",
       allowMultiple = true,

@@ -53,4 +53,31 @@ public interface Downloader {
       Optional<String> type,
       String context)
       throws IOException, InterruptedException;
+
+  /**
+   * Downloads the contents of a file and returns them in memory.
+   *
+   * <p>As with {@link #download}, the URLs represent mirrors of the same logical resource.
+   *
+   * @param urls list of mirror URLs with identical content
+   * @param headers HTTP headers to use when connecting to URLs
+   * @param credentials credentials to use when connecting to URLs
+   * @param checksum valid checksum which is checked, or absent to disable
+   * @param canonicalId free-form identifier naming the logical resource for cache lookup/logging
+   * @param eventHandler event handler used for download events
+   * @param clientEnv environment variables in shell issuing this command
+   * @param context free-form string that describes the origin of the download for logging
+   * @throws IOException if download was attempted and ended up failing
+   * @throws InterruptedException if this thread is being cast into oblivion
+   */
+  byte[] downloadAndRead(
+      List<URI> urls,
+      Map<String, List<String>> headers,
+      Credentials credentials,
+      Optional<Checksum> checksum,
+      String canonicalId,
+      ExtendedEventHandler eventHandler,
+      Map<String, String> clientEnv,
+      String context)
+      throws IOException, InterruptedException;
 }

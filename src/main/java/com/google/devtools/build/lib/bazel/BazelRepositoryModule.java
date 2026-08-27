@@ -139,6 +139,7 @@ public class BazelRepositoryModule extends BlazeModule {
       new MutableSupplier<>();
   private final MutableSupplier<ImmutableMap<String, String>> nonstrictRepoEnvSupplier =
       new MutableSupplier<>();
+  @Nullable private DownloadManager downloadManager;
   private boolean fetchDisabled = false;
   private ImmutableMap<String, PathFragment> overrides = ImmutableMap.of();
   private ImmutableMap<String, PathFragment> injections = ImmutableMap.of();
@@ -274,12 +275,14 @@ public class BazelRepositoryModule extends BlazeModule {
 
   @Override
   public void beforeCommand(CommandEnvironment env) throws AbruptExitException {
-    DownloadManager downloadManager =
+    RepositoryOptions repoOptions = env.getOptions().getOptions(RepositoryOptions.class);
+    downloadManager =
         new DownloadManager(
             repositoryCache.getDownloadCache(),
             env.getDownloaderDelegate(),
             env.getHttpDownloader(),
-            env.getReporter());
+            env.getReporter(),
+            repoOptions != null && repoOptions.getExperimentalPrefetchRegistryModuleFiles());
     this.repositoryFetchFunction.setDownloadManager(downloadManager);
     this.moduleFileFunction.setDownloadManager(downloadManager);
     this.repoSpecFunction.setDownloadManager(downloadManager);
@@ -297,7 +300,6 @@ public class BazelRepositoryModule extends BlazeModule {
     singleExtensionEvalFunction.setProcessWrapper(processWrapper);
     singleExtensionEvalFunction.setDownloadManager(downloadManager);
 
-    RepositoryOptions repoOptions = env.getOptions().getOptions(RepositoryOptions.class);
     requireRepoExtensionMetadataMode = RequireRepoExtensionMetadataMode.FALSE;
     if (repoOptions != null) {
       downloadManager.setDisableDownload(repoOptions.getDisableDownload());
@@ -735,6 +737,10 @@ public class BazelRepositoryModule extends BlazeModule {
 
   @Override
   public void afterCommand() throws AbruptExitException {
+    if (downloadManager != null) {
+      downloadManager.close();
+      downloadManager = null;
+    }
     if (repositoryCache.getRepoContentsCache().isEnabled()) {
       try {
         repositoryCache.getRepoContentsCache().releaseSharedLock();
