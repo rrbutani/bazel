@@ -103,7 +103,9 @@ if [[ "${BUILD_BINARIES}" == "1" ]]; then
     "--disk_cache=${DISK_CACHE}" \
     //src:bazel-bin-dev \
     //src:bazel-bin_native \
-    //src:bazel-bin_native_pgo_instrumented
+    //src:bazel-bin_native_pgo_instrumented \
+    --stamp \
+    --embed_label "${STAMP_TAG-''}"
   rm -f "${JVM_BIN}" "${NATIVE_BIN}" "${NATIVE_PGO_INSTRUMENTED_BIN}"
   cp bazel-bin/src/bazel-dev "${JVM_BIN}"
   cp bazel-bin/src/bazel_native "${NATIVE_BIN}"
