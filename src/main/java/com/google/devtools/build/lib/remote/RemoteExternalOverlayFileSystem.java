@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.flogger.GoogleLogger;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.devtools.build.lib.actions.ActionInputHelper;
@@ -78,6 +79,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import javax.annotation.Nullable;
 
 /**
@@ -88,6 +90,7 @@ import javax.annotation.Nullable;
  * memory in the {@link RemoteExternalFileSystem}.
  */
 public final class RemoteExternalOverlayFileSystem extends FileSystem implements LazyMaterializer {
+  private static final GoogleLogger logger = GoogleLogger.forEnclosingClass();
   private final PathFragment externalDirectory;
   private final int externalDirectorySegmentCount;
   private final FileSystem nativeFs;
@@ -99,6 +102,7 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
   // externalFs.
   private final ConcurrentHashMap<String, String> markerFileContents = new ConcurrentHashMap<>();
   private final Set<String> reposWithLostFiles = ConcurrentHashMap.newKeySet();
+  private final ImmutableList<Predicate<String>> prefetchPatterns;
 
   // Per-build information that is set in beforeCommand and cleared in afterCommand.
   @Nullable private CombinedCache cache;
@@ -110,12 +114,16 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
   @Nullable private Duration remoteCacheTtl;
   @Nullable private ListeningExecutorService materializationExecutor;
 
-  public RemoteExternalOverlayFileSystem(PathFragment externalDirectory, FileSystem nativeFs) {
+  public RemoteExternalOverlayFileSystem(
+      PathFragment externalDirectory,
+      FileSystem nativeFs,
+      ImmutableList<Predicate<String>> prefetchPatterns) {
     super(nativeFs.getDigestFunction());
     this.externalDirectory = externalDirectory;
     this.externalDirectorySegmentCount = externalDirectory.segmentCount();
     this.nativeFs = nativeFs;
     this.externalFs = new RemoteExternalFileSystem(nativeFs.getDigestFunction());
+    this.prefetchPatterns = prefetchPatterns;
   }
 
   public void beforeCommand(
@@ -224,6 +232,7 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
         repoDir,
         remoteContents.getRoot(),
         childMap,
+        prefetchPatterns,
         filesToPrefetch::add,
         symlinksToPrefetch::add,
         Instant.now().plus(remoteCacheTtl));
@@ -231,6 +240,12 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
     try {
       // TODO: This prefetches a large number of small files. Investigate whether BatchReadBlobs
       // would be more efficient.
+      logger.atInfo().log(
+        "Prefetching %d files for repo %s: %s",
+        filesToPrefetch.size(),
+        repo.getName(),
+        filesToPrefetch.stream().map((p) -> p.relativeTo(repoDir).getPathString()).toList()
+      );
       prefetch(filesToPrefetch);
     } catch (BulkTransferException e) {
       if (e.allCausedByCacheNotFoundException()) {
@@ -289,6 +304,7 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
       PathFragment path,
       Directory dir,
       ImmutableMap<Digest, Directory> childMap,
+      ImmutableList<Predicate<String>> prefetchPatterns,
       Consumer<PathFragment> filesToPrefetch,
       Consumer<PathFragment> symlinksToPrefetch,
       Instant expirationTime)
@@ -307,7 +323,7 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
       if (!filePath.startsWith(repoDir)) {
         throw new IOException("Path traversal detected: " + filePath + " is outside " + repoDir);
       }
-      if (shouldPrefetch(filePath)) {
+      if (shouldPrefetch(filePath, prefetchPatterns)) {
         filesToPrefetch.accept(filePath);
       }
       fs.injectFile(
@@ -337,7 +353,7 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
       if (!linkPath.startsWith(repoDir)) {
         throw new IOException("Path traversal detected: " + linkPath + " is outside " + repoDir);
       }
-      if (shouldPrefetch(linkPath)) {
+      if (shouldPrefetch(linkPath, prefetchPatterns)) {
         symlinksToPrefetch.accept(linkPath);
       }
       String target = unicodeToInternal(symlink.getTarget());
@@ -375,6 +391,7 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
           subdirPath,
           subdir,
           childMap,
+          prefetchPatterns,
           filesToPrefetch,
           symlinksToPrefetch,
           expirationTime);
@@ -536,13 +553,19 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
    * <p>This is decided by the path a read is made through, which for a symlink is not the path of
    * the file that ends up being materialized.
    */
-  private static boolean shouldPrefetch(PathFragment path) {
+  private static boolean shouldPrefetch(
+      PathFragment path, ImmutableList<Predicate<String>> prefetchPatterns) {
     // .bzl files are typically small and the loads between them can form complex DAGs that can only
     // be discovered layer by layer, so prefetching is worthwhile to reduce the number of sequential
     // cache requests.
     // The REPO.bazel file, if present, is a dependency of any package and will thus have to be
     // fetched anyway.
-    return path.getFileExtension().equals("bzl") || path.getBaseName().equals("REPO.bazel");
+    return (
+      path.getFileExtension().equals("bzl") ||
+      path.getFileExtension().equals("scl") ||
+      path.getBaseName().equals("REPO.bazel") ||
+      prefetchPatterns.stream().anyMatch(p -> p.test(path.toString()))
+    );
   }
 
   @Override
@@ -865,9 +888,9 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem implements
       // they resolve to, so follow them before reading a prefetched file. Either end of the chain
       // can be what makes the read eligible: a symlink named `helper.bzl` pointing at `helper.txt`
       // as well as one named `helper.txt` pointing at `helper.bzl`.
-      boolean prefetched = shouldPrefetch(path);
+      boolean prefetched = shouldPrefetch(path, prefetchPatterns);
       path = resolveSymbolicLinks(path).asFragment();
-      if (prefetched || shouldPrefetch(path)) {
+      if (prefetched || shouldPrefetch(path, prefetchPatterns)) {
         return nativeFs.getInputStream(path);
       }
       var relativePath = path.relativeTo(externalDirectory);
