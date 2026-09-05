@@ -241,10 +241,10 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem
       // TODO: This prefetches a large number of small files. Investigate whether BatchReadBlobs
       // would be more efficient.
       logger.atInfo().log(
-        "Prefetching %d files for repo %s: %s",
+        "Prefetching %d files for repo %s",
         filesToPrefetch.size(),
-        repo.getName(),
-        filesToPrefetch.stream().map((p) -> p.relativeTo(repoDir).getPathString()).toList()
+        repo.getName()
+        // filesToPrefetch.stream().map((p) -> p.relativeTo(repoDir).getPathString()).toList()
       );
       prefetch(filesToPrefetch);
     } catch (BulkTransferException e) {
@@ -407,12 +407,33 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem
    * Bazel or local actions are handled automatically by the file system or {@link
    * AbstractActionInputPrefetcher}.
    */
-  public void ensureMaterialized(RepositoryName repo, ExtendedEventHandler reporter)
+  public void ensureMaterialized(
+      RepositoryName repo,
+      ExtendedEventHandler reporter,
+      boolean requiresFullRepoMaterialization,
+      Path path,
+      String reasonForMaterialization)
       throws IOException, InterruptedException {
     if (!markerFileContents.containsKey(repo.getName())) {
       // The repo has not been injected into the in-memory file system.
       return;
     }
+
+    // TODO: if full materialization isn't required, support fetching just the
+    // requested file? right now, unless the file was prefetched, we fetch the
+    // whole repo
+    if (!requiresFullRepoMaterialization) {
+      if (shouldPrefetch(path.asFragment(), prefetchPatterns)) {
+        // the file has already been prefetched; no need to materialize
+        return;
+      } else {
+        reasonForMaterialization += " (full materialization not required but file was not prefetched)";
+      }
+    } else {
+      reasonForMaterialization += " (full materialization required)";
+    }
+
+    final var reason = reasonForMaterialization;
     var unused =
         getFromFuture(
             materializations.execute(
@@ -422,14 +443,14 @@ public final class RemoteExternalOverlayFileSystem extends FileSystem
                 () ->
                     materializationExecutor.submit(
                         () -> {
-                          doMaterialize(repo, reporter);
+                          doMaterialize(repo, reporter, reason);
                           return null;
                         })));
   }
 
-  private void doMaterialize(RepositoryName repo, ExtendedEventHandler reporter)
+  private void doMaterialize(RepositoryName repo, ExtendedEventHandler reporter, String reason)
       throws IOException, InterruptedException {
-    reporter.handle(Event.debug("Materializing remote repo %s".formatted(repo)));
+    reporter.handle(Event.debug("Materializing remote repo %s due to %s".formatted(repo, reason)));
     materializeSubtree(externalDirectory.getChild(repo.getName()));
     materializedRepos.add(repo.getName());
 

@@ -827,7 +827,8 @@ When <code>sha256</code> or <code>integrity</code> is user specified, setting an
       checksumValidation = e;
     }
 
-    StarlarkPath outputPath = getPath(output);
+    // note: materialization bool is moot; cannot download into another repo
+    StarlarkPath outputPath = getPathInner(output, "-", false);
     WorkspaceRuleEvent w =
         WorkspaceRuleEvent.newDownloadEvent(
             urls,
@@ -1116,7 +1117,8 @@ Strip the given number of leading components from file paths on extraction. Only
             identifyingStringForLogging,
             thread.getCallerLocation());
 
-    StarlarkPath outputPath = getPath(output);
+    // note: materialization bool is moot; cannot extract into another repo
+    StarlarkPath outputPath = getPathInner(output, "-", false);
     checkInOutputDirectory("write", outputPath);
     createDirectory(outputPath.getPath());
 
@@ -1357,7 +1359,7 @@ Strip the given number of leading components from file paths on extraction. Only
     stripPrefix = renamedStripPrefix("extract", stripPrefix, oldStripPrefix);
     int stripComponents = Starlark.toInt(stripComponentsI, "strip_components");
     validateStripping("extract", stripPrefix, stripComponents);
-    StarlarkPath archivePath = getPath(archive);
+    StarlarkPath archivePath = getPathInner(archive, "extract", false);
 
     if (!archivePath.exists()) {
       throw new RepositoryFunctionException(
@@ -1368,7 +1370,8 @@ Strip the given number of leading components from file paths on extraction. Only
     }
     maybeWatch(archivePath, ShouldWatch.fromString(watchArchive));
 
-    StarlarkPath outputPath = getPath(output);
+    // note: materialization bool is moot; cannot extract into another repo
+    StarlarkPath outputPath = getPathInner(output, "-", false);
     checkInOutputDirectory("write", outputPath);
 
     Map<String, String> renameFilesMap =
@@ -1503,7 +1506,8 @@ Strip the given number of leading components from file paths on extraction. Only
   public void createFile(
       Object path, String content, Boolean executable, Boolean legacyUtf8, StarlarkThread thread)
       throws RepositoryFunctionException, EvalException, InterruptedException {
-    StarlarkPath p = getPath(path);
+    // note: materialization bool is moot; cannot write into another repo
+    StarlarkPath p = getPathInner(path, "-", false);
     WorkspaceRuleEvent w =
         WorkspaceRuleEvent.newFileEvent(
             p.toString(),
@@ -1595,9 +1599,15 @@ Strip the given number of leading components from file paths on extraction. Only
                     + " a path from.")
       })
   public StarlarkPath getPath(Object path) throws EvalException, InterruptedException {
+    // if a label is converted to a path, materialize the full underlying repo, to be safe
+    return getPathInner(path, /* accessKind= */ "path coercion", /* materializeFullRepo= */ true);
+  }
+
+  protected StarlarkPath getPathInner(Object path, String accessKind, boolean materializeFullRepo)
+      throws EvalException, InterruptedException {
     return switch (path) {
       case String s -> new StarlarkPath(this, workingDirectory.getRelative(s));
-      case Label label -> getPathFromLabel(label);
+      case Label label -> getPathFromLabel(label, accessKind, materializeFullRepo);
       case StarlarkPath starlarkPath -> starlarkPath;
       // This can never happen because we check it in the Starlark interpreter.
       default -> throw new IllegalArgumentException("expected string or label for path");
@@ -1634,7 +1644,7 @@ Strip the given number of leading components from file paths on extraction. Only
       })
   public String readFile(Object path, String watch, StarlarkThread thread)
       throws RepositoryFunctionException, EvalException, InterruptedException {
-    StarlarkPath p = getPath(path);
+    StarlarkPath p = getPathInner(path, "read", false); // no need to materialize full repo to read a file
     WorkspaceRuleEvent w =
         WorkspaceRuleEvent.newReadEvent(
             p.toString(), identifyingStringForLogging, thread.getCallerLocation());
@@ -1787,7 +1797,9 @@ Strip the given number of leading components from file paths on extraction. Only
       })
   public void watchForStarlark(Object path)
       throws RepositoryFunctionException, EvalException, InterruptedException {
-    maybeWatch(getPath(path), ShouldWatch.YES);
+    // note: shouldn't even have to materialize the file to the filesystem to
+    // watch it... not sure how to represent this though (TODO)
+    maybeWatch(getPathInner(path, "watch", false), ShouldWatch.YES);
   }
 
   // Create parent directories for the given path
@@ -1873,7 +1885,9 @@ Strip the given number of leading components from file paths on extraction. Only
 
   private Map.Entry<PathFragment, Path> getRemotePathFromLabel(Label label)
       throws EvalException, InterruptedException {
-    Path localPath = getPathFromLabel(label).getPath();
+    // TODO: should not have to materialize a file locally just to prepare to
+    // execute a command remotely...
+    Path localPath = getPathFromLabel(label, "remote execute", true).getPath();
     PathFragment remotePath =
         label.getPackageIdentifier().getSourceRoot().getRelative(label.getName());
     return Maps.immutableEntry(remotePath, localPath);
@@ -2059,7 +2073,12 @@ Strip the given number of leading components from file paths on extraction. Only
     List<String> args = new ArrayList<>(arguments.size());
     for (Object arg : arguments) {
       if (arg instanceof Label label) {
-        args.add(getPathFromLabel(label).toString());
+        // if a file within a repo is referenced as an arg in `execute`,
+        // materialize the whole repo that the file belongs to, to play it safe
+        //
+        // it's plausible that the command being executed may (transitively)
+        // expect relative paths from this argument to be present
+        args.add(getPathFromLabel(label, "execute argument", true).toString());
       } else {
         // String or StarlarkPath expected
         args.add(arg.toString());
@@ -2090,7 +2109,13 @@ Strip the given number of leading components from file paths on extraction. Only
 
     Path workingDirectoryPath;
     if (overrideWorkingDirectory != null && !overrideWorkingDirectory.isEmpty()) {
-      workingDirectoryPath = getPath(overrideWorkingDirectory).getPath();
+      // note: materialization bool is not really relevant here;
+      // `overrideWorkingDirectory` is always a string so it's not possible to
+      // request here that a command execute in another repository (without
+      // first getting a path to that repository via `path()`)
+      workingDirectoryPath = getPathInner(
+        overrideWorkingDirectory, "execution working directory", true
+      ).getPath();
     } else {
       workingDirectoryPath = workingDirectory;
     }
@@ -2183,7 +2208,7 @@ Strip the given number of leading components from file paths on extraction. Only
   public StarlarkWasmModule loadWasm(
       Object path, boolean compile, String allocateFn, String watch, StarlarkThread thread)
       throws EvalException, RepositoryFunctionException, InterruptedException {
-    StarlarkPath p = getPath(path);
+    StarlarkPath p = getPathInner(path, "load_wasm", false);
 
     WorkspaceRuleEvent w =
         WorkspaceRuleEvent.newLoadWasmEvent(
@@ -2304,7 +2329,7 @@ func(
         wasmModule = m;
         path = m.getPath();
       }
-      default -> path = getPath(pathOrModule);
+      default -> path = getPathInner(pathOrModule, "execute_wasm", false);
     }
     ;
 
@@ -2404,7 +2429,11 @@ func(
   }
 
   // Resolve the label given by value into a file path.
-  protected StarlarkPath getPathFromLabel(Label label) throws EvalException, InterruptedException {
+  protected StarlarkPath getPathFromLabel(
+    Label label,
+    String accessKind,
+    boolean requiresFullRepoMaterialization
+  ) throws EvalException, InterruptedException {
     RootedPath rootedPath = RepositoryUtils.getRootedPathFromLabel(label, env);
     if (rootedPath == null) {
       throw new NeedsSkyframeRestartException();
@@ -2413,7 +2442,12 @@ func(
         && directories.getOutputBase().getFileSystem()
             instanceof RemoteExternalOverlayFileSystem remoteFs) {
       try {
-        remoteFs.ensureMaterialized(label.getRepository(), env.getListener());
+        remoteFs.ensureMaterialized(
+          label.getRepository(), env.getListener(),
+          requiresFullRepoMaterialization,
+          rootedPath.asPath(),
+          accessKind + " of " + label.toString()
+        );
       } catch (IOException e) {
         throw Starlark.errorf(
             "Failed to materialize remote repo %s: %s", label.getRepository(), e.getMessage());
