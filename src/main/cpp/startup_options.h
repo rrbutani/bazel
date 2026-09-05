@@ -309,6 +309,8 @@ class StartupOptions {
   // external repositories.
   bool remote_repo_contents_cache;
 
+  std::vector<std::string> remote_repo_contents_cache_prefetch_patterns;
+
   bool use_compact_object_headers_;
 
  protected:

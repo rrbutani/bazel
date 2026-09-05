@@ -145,6 +145,7 @@ public final class RemoteModule extends BlazeModule {
   private final Set<Digest> knownMissingCasDigests = Sets.newConcurrentHashSet();
   private final ChunkLocationMap chunkLocationMap = new ChunkLocationMap();
   private boolean useRemoteRepoContentsCache;
+  private ImmutableList<Predicate<String>> remoteRepoCachePrefetchPatterns;
 
   @Nullable private PathFragment outputBase;
   @Nullable private AsynchronousMessageOutputStream<LogEntry> rpcLogFile;
@@ -199,8 +200,16 @@ public final class RemoteModule extends BlazeModule {
   public void globalInit(
       OptionsParsingResult startupOptions, Iterable<BlazeService> blazeServices) {
     outputBase = startupOptions.getOptions(BlazeServerStartupOptions.class).getOutputBase();
-    useRemoteRepoContentsCache =
-        startupOptions.getOptions(RemoteStartupOptions.class).getUseRemoteRepoContentsCache();
+
+    var remoteStartupOptions = startupOptions.getOptions(RemoteStartupOptions.class);
+    useRemoteRepoContentsCache = remoteStartupOptions.getUseRemoteRepoContentsCache();
+
+    // TODO: warn if non-empty when remote contents cache is not enabled?
+    ImmutableList.Builder<Predicate<String>> builder = ImmutableList.builder();
+    for (RegexPatternOption pat : remoteStartupOptions.getRemoteRepoContentsCachePrefetchRegex()) {
+      builder.add(pat.matcher());
+    }
+    remoteRepoCachePrefetchPatterns = builder.build();
   }
 
   @Nullable
@@ -210,7 +219,8 @@ public final class RemoteModule extends BlazeModule {
       return null;
     }
     return new RemoteExternalOverlayFileSystem(
-        outputBase.getRelative(LabelConstants.EXTERNAL_REPOSITORY_LOCATION), nativeFs);
+        outputBase.getRelative(LabelConstants.EXTERNAL_REPOSITORY_LOCATION), nativeFs,
+        remoteRepoCachePrefetchPatterns);
   }
 
   @Override

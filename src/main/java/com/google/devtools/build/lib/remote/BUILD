@@ -963,6 +963,7 @@ java_library(
         "//third_party/java/guava:base",
         "//third_party/java/guava:collect",
         "//third_party/java/guava:concurrent",
+        "//third_party/java/flogger",
         "//third_party/java/jsr305_annotations",
         "@remoteapis//:build_bazel_remote_execution_v2_remote_execution_java_proto",
     ],

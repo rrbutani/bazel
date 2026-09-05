@@ -173,6 +173,7 @@ StartupOptions::StartupOptions(const string& product_name,
   RegisterUnaryStartupFlag("failure_detail_out");
   RegisterUnaryStartupFlag("experimental_cgroup_parent");
   RegisterUnaryStartupFlag("extra_classpath");
+  RegisterUnaryStartupFlag("experimental_remote_repo_contents_cache_prefetch_regex");
 }
 
 StartupOptions::~StartupOptions() {}
@@ -403,6 +404,10 @@ blaze_exit_code::ExitCode StartupOptions::ProcessArg(const string& argstr,
     cgroup_parent = value;
     option_sources["cgroup_parent"] = rcfile;
 #endif
+  } else if ((value = GetUnaryOption(arg, next_arg, "--experimental_remote_repo_contents_cache_prefetch_regex")) !=
+             nullptr) {
+    remote_repo_contents_cache_prefetch_patterns.push_back(value);
+    option_sources["experimental_remote_repo_contents_cache_prefetch_regex"] = rcfile;  // note: not right; accepts multiple values
   } else {
     bool extra_argument_processed;
     blaze_exit_code::ExitCode process_extra_arg_exit_code = ProcessArgExtra(
