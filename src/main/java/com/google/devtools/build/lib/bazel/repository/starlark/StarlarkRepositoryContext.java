@@ -219,8 +219,8 @@ public class StarlarkRepositoryContext extends StarlarkBaseExternalContext {
       })
   public void symlink(Object target, Object linkName, StarlarkThread thread)
       throws RepositoryFunctionException, EvalException, InterruptedException {
-    StarlarkPath targetPath = getPath(target);
-    StarlarkPath linkPath = getPath(linkName);
+    StarlarkPath targetPath = getPathInner(target, "symlink target", false); // don't need to materialize full repo
+    StarlarkPath linkPath = getPathInner(linkName, "-", false); // materialization arg is moot; must be in current repo
     WorkspaceRuleEvent w =
         WorkspaceRuleEvent.newSymlinkEvent(
             targetPath.toString(),
@@ -318,8 +318,8 @@ public class StarlarkRepositoryContext extends StarlarkBaseExternalContext {
       String watchTemplate,
       StarlarkThread thread)
       throws RepositoryFunctionException, EvalException, InterruptedException {
-    StarlarkPath p = getPath(path);
-    StarlarkPath t = getPath(template);
+    StarlarkPath p = getPathInner(path, "-", false); // materialization arg is moot; must be in current repo
+    StarlarkPath t = getPathInner(template, "template expansion", false);
     Map<String, String> substitutionMap =
         Dict.cast(substitutions, String.class, String.class, "substitutions");
     WorkspaceRuleEvent w =
@@ -443,8 +443,8 @@ public class StarlarkRepositoryContext extends StarlarkBaseExternalContext {
       })
   public void rename(Object srcName, Object dstName, StarlarkThread thread)
       throws RepositoryFunctionException, EvalException, InterruptedException {
-    StarlarkPath srcPath = getPath(srcName);
-    StarlarkPath dstPath = getPath(dstName);
+    StarlarkPath srcPath = getPathInner(srcName, "-", false); // materialization arg is moot; must be in current repo
+    StarlarkPath dstPath = getPathInner(dstName, "-", false); // materialization arg is moot; must be in current repo
     WorkspaceRuleEvent w =
         WorkspaceRuleEvent.newRenameEvent(
             srcPath.toString(),
@@ -543,8 +543,8 @@ public class StarlarkRepositoryContext extends StarlarkBaseExternalContext {
       StarlarkThread thread)
       throws EvalException, RepositoryFunctionException, InterruptedException {
     int strip = Starlark.toInt(stripI, "strip");
-    StarlarkPath starlarkPath = getPath(patchFile);
-    StarlarkPath directoryPath = getPath(directory);
+    StarlarkPath starlarkPath = getPathInner(patchFile, "use as patch file", false); // don't need to materialize full repo
+    StarlarkPath directoryPath = getPathInner(directory, "-", false); // materialization arg is moot; must be in current repo
     checkInOutputDirectory("write", directoryPath);
     WorkspaceRuleEvent w =
         WorkspaceRuleEvent.newPatchEvent(
@@ -605,7 +605,9 @@ public class StarlarkRepositoryContext extends StarlarkBaseExternalContext {
       })
   public void watchTree(Object path, Sequence<?> exclude)
       throws EvalException, InterruptedException, RepositoryFunctionException {
-    StarlarkPath p = getPath(path);
+    // note: shouldn't even have to materialize the tree to the filesystem to
+    // watch it... not sure how to represent this though (TODO)
+    StarlarkPath p = getPathInner(path, "watch_tree", true);
     if (!p.isDir()) {
       throw Starlark.errorf("can't call watch_tree() on non-directory %s", p);
     }
