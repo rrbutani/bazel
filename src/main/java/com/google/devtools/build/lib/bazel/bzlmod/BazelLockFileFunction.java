@@ -49,6 +49,8 @@ import javax.annotation.Nullable;
 public class BazelLockFileFunction implements SkyFunction {
 
   public static final Precomputed<LockfileMode> LOCKFILE_MODE = new Precomputed<>("lockfile_mode");
+  public static final Precomputed<Boolean> INCLUDE_REPRODUCIBLE_IN_WORKSPACE_LOCKFILE
+      = new Precomputed<>("include_reproducible_module_extensions_in_lockfile");
 
   private static final Pattern LOCKFILE_VERSION_PATTERN =
       Pattern.compile("\"lockFileVersion\":\\s*(\\d+)");
