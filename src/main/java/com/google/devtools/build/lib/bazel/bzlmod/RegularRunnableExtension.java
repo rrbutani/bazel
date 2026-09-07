@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.devtools.build.lib.analysis.BlazeDirectories;
+import com.google.devtools.build.lib.bazel.bzlmod.BazelLockFileFunction;
 import com.google.devtools.build.lib.bazel.repository.RepositoryOptions.RequireRepoExtensionMetadataMode;
 import com.google.devtools.build.lib.bazel.repository.downloader.DownloadManager;
 import com.google.devtools.build.lib.bazel.repository.starlark.NeedsSkyframeRestartException;
@@ -230,6 +231,7 @@ final class RegularRunnableExtension implements RunnableExtension {
     // See below (the `catch CancellationException` clause) for why there's a `while` loop here.
     while (true) {
       var state = env.getState(WorkerSkyKeyComputeState<RunModuleExtensionResult>::new);
+      var forceReproducibleOff = BazelLockFileFunction.INCLUDE_REPRODUCIBLE_IN_WORKSPACE_LOCKFILE.get(env);
       try {
         return state.startOrContinueWork(
             env,
@@ -242,7 +244,8 @@ final class RegularRunnableExtension implements RunnableExtension {
                     extensionId,
                     mainRepositoryMapping,
                     facts,
-                    requireRepoExtensionMetadataMode));
+                    requireRepoExtensionMetadataMode,
+                    forceReproducibleOff));
       } catch (ExecutionException e) {
         Throwables.throwIfInstanceOf(e.getCause(), ExternalDepsException.class);
         Throwables.throwIfInstanceOf(e.getCause(), InterruptedException.class);
@@ -264,7 +267,8 @@ final class RegularRunnableExtension implements RunnableExtension {
       ModuleExtensionId extensionId,
       RepositoryMapping mainRepositoryMapping,
       Facts facts,
-      RequireRepoExtensionMetadataMode requireRepoExtensionMetadataMode)
+      RequireRepoExtensionMetadataMode requireRepoExtensionMetadataMode,
+      boolean forceReproducibleOff)
       throws InterruptedException, ExternalDepsException {
     env.getListener().post(ModuleExtensionEvaluationProgress.ongoing(extensionId, "starting"));
     ModuleExtensionEvalStarlarkThreadContext threadContext =
@@ -304,6 +308,9 @@ final class RegularRunnableExtension implements RunnableExtension {
         }
         if (returnValue instanceof ModuleExtensionMetadata retMetadata) {
           moduleExtensionMetadata = retMetadata;
+          if (forceReproducibleOff && moduleExtensionMetadata.getReproducible()) {
+            moduleExtensionMetadata = moduleExtensionMetadata.withReproducible(false);
+          }
         } else {
           if (shouldRequireMetadata(requireRepoExtensionMetadataMode, extensionId)) {
             throw ExternalDepsException.withMessage(
