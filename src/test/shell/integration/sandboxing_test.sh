@@ -1359,7 +1359,10 @@ function test_flaky_timeout_retries() {
   project_folder="$(pwd | cut -d"/" -f 2)"
   local mount_flags=()
   for folder in /*/; do
-    if [ -d "$folder" ] && [ "$folder" != "/$project_folder/" ]; then
+    if [ -d "$folder" ] &&
+      [ "$folder" != "/$project_folder/" ] &&
+      [ "$folder" != "/tmp/" ]
+    then
       if [[ -L "$folder" ]]; then
         local linked_folder
         linked_folder="$(readlink -f "$folder")"
