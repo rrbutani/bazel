@@ -15,6 +15,7 @@ package com.google.devtools.build.lib.remote;
 
 import com.google.devtools.build.lib.cmdline.RepositoryName;
 import com.google.devtools.build.lib.events.ExtendedEventHandler;
+import com.google.devtools.build.lib.vfs.Path;
 import com.google.devtools.build.lib.vfs.PathFragment;
 import java.io.IOException;
 
@@ -29,8 +30,14 @@ public interface LazyMaterializer {
    *
    * <p>Does nothing if the repository is already backed by the local file system.
    */
-  void ensureMaterialized(RepositoryName repo, ExtendedEventHandler reporter)
-      throws IOException, InterruptedException;
+  void ensureMaterialized(
+      RepositoryName repo,
+      ExtendedEventHandler reporter,
+      boolean requiresFullRepoMaterialization,
+      Path path,
+      String reasonForMaterialization
+  )
+  throws IOException, InterruptedException;
 
   /**
    * Materializes the subtree rooted at the given path to the local file system if its contents are
