@@ -85,6 +85,15 @@ public abstract class ModuleExtensionMetadata implements StarlarkValue {
         facts);
   }
 
+  public ModuleExtensionMetadata withReproducible(boolean reproducible) {
+    return create(
+        getExplicitRootModuleDirectDeps(),
+        getExplicitRootModuleDirectDevDeps(),
+        getUseAllRepos(),
+        reproducible,
+        getFacts());
+  }
+
   static ModuleExtensionMetadata create(
       Object rootModuleDirectDepsUnchecked,
       Object rootModuleDirectDevDepsUnchecked,

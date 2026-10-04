@@ -432,6 +432,31 @@ public abstract class RepositoryOptions extends OptionsBase {
   public abstract LockfileMode getLockfileMode();
 
   @Option(
+      name = "experimental_include_reproducible_module_extensions_in_lockfile",
+      defaultValue = "false",
+      documentationCategory = OptionDocumentationCategory.BZLMOD,
+      effectTags = {OptionEffectTag.LOADING_AND_ANALYSIS},
+      help =
+          """
+          Ignore `module_ctx.extension_metadata(reproducible=True)` and
+          unconditionally record all module extensions in the workspce lockfile.
+
+          Normally, module extensions marked as `reproducible=True` are not
+          recorded in the workspace lockfile (MODULE.bazel.lock) — instead their
+          results are recorded in the internal lockfile. This allows for smaller
+          workspace lockfiles while also allowing subsequent builds (including
+          across daemon restarts) to skip re-running the module extension.
+          However, "clean" builds (i.e. fresh output base, no internal lockfile
+          present) will still need to re-run such module extensions.
+
+          When this flag is set, such module extensions will have their results
+          recorded in the workspace lockfile — results in larger workspace
+          lockfiles but allows for "clean" builds to skip re-running such module
+          extensions (if results are up-to-date).
+          """)
+  public abstract boolean getIncludeReproducibleModExtsInWorkspaceLockfile();
+
+  @Option(
       name = "vendor_dir",
       defaultValue = "null",
       converter = OptionsUtils.PathFragmentConverter.class,
