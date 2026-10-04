@@ -524,3 +524,6 @@ register_toolchains("@local_config_winsdk//:all")
 register_toolchains("//tools/res:empty_rc_toolchain")
 
 register_toolchains("@graalvm_ce_toolchains//:gvm")
+
+bazel_dep(name = "llvm", version = "0.8.24", dev_dependency = True)
+register_toolchains("@llvm//toolchain:all", dev_dependency = True)

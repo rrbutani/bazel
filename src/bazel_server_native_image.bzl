@@ -134,6 +134,7 @@ def _bazel_server_native_image_impl(ctx):
     args.add("-H:+UnlockExperimentalVMOptions")
     args.add("-H:+AddAllCharsets")
     args.add("-H:DefaultCharset=ISO-8859-1")
+    args.add("-H:-CheckToolchain")
     if ctx.attr.optimization:
         args.add("-O" + ctx.attr.optimization)
     if ctx.attr.gc:
@@ -152,7 +153,7 @@ def _bazel_server_native_image_impl(ctx):
     args.add(ctx.file.jni_configuration, format = "-H:JNIConfigurationFiles=%s")
     args.add(dynamic_proxy_config, format = "-H:DynamicProxyConfigurationFiles=%s")
     args.add(ctx.attr.include_resources, format = "-H:IncludeResources=%s")
-    args.add("-march=x86-64-v2")
+    args.add("-march=x86-64-v3")
     args.add(cc_toolchain.c_compiler_path, format = "--native-compiler-path=%s")
     if ctx.attr.parallelism > 0:
         args.add(ctx.attr.parallelism, format = "--parallelism=%s")
@@ -324,7 +325,7 @@ bazel_server_native_image = rule(
             mandatory = True,
         ),
         "optimization": attr.string(
-            default = "2",
+            default = "3",
             values = [
                 "b",
                 "s",
