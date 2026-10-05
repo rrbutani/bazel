@@ -27,13 +27,25 @@ release command:
 ```bash
 DATE="$(date +%Y%m%d)"
 REV="$(git rev-parse HEAD)"
+STAMP_TAG="10.0.0-pre.${DATE}.${REV}"
 
 BUILD_BINARIES=1 \
 XDG_CACHE_HOME=/tmp/bcache3 \
 BENCHMARK_REF=upstream/master \
-STAMP_TAG=10.0.0.pre.${DATE}.${REV} \
+STAMP_TAG="${STAMP_TAG}" \
   ./graalvm_native_pgo_report.sh
 
 echo "based on: $(git merge-base upstream/master HEAD)"
-echo "make tag: bazel-10.0.0.pre.${DATE}.${REV}"
+echo "make tag: bazel-${STAMP_TAG}"
+
+cp /tmp/bcache3/graalvm-bazel-native/bin/bazel-native-pgo-run \
+  ~/home/bin/bazel_/"bazel-${STAMP_TAG}.native-pgo"
+cp /tmp/bcache3/graalvm-bazel-native/bin/bazel-native-nopgo-run \
+  ~/home/bin/bazel_/"bazel-${STAMP_TAG}.native"
+cp /tmp/bcache3/graalvm-bazel-native/bin/bazel-jvm-pgo-run \
+  ~/home/bin/bazel_/"bazel-${STAMP_TAG}.jvm"
+
+chmod a+rx ~/home/bin/bazel_/bazel-*
+ln -sf bazel_/"bazel-${STAMP_TAG}.jvm" ~/home/bin/bazel10
+ln -sf bazel_/"bazel-${STAMP_TAG}.native" ~/home/bin/bazel10n
 ```
